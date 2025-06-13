@@ -12,13 +12,27 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		FB42A84D2DF22ECE00164A2D /* TagYourMeet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TagYourMeet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FB42A84D2DF22ECE00164A2D /* TagYourMeat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TagYourMeat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FB42A95D2DF4B23D00164A2D /* TagYourMeat.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagYourMeat.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FB42A9672DF4B89400164A2D /* Exceptions for "TagYourMeat" folder in "TagYourMeat" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FB42A84C2DF22ECE00164A2D /* TagYourMeat */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		FB42A84F2DF22ECE00164A2D /* TagYourMeet */ = {
+		FB42A84F2DF22ECE00164A2D /* TagYourMeat */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TagYourMeet;
+			exceptions = (
+				FB42A9672DF4B89400164A2D /* Exceptions for "TagYourMeat" folder in "TagYourMeat" target */,
+			);
+			path = TagYourMeat;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -39,7 +53,8 @@
 		FB42A8442DF22ECE00164A2D = {
 			isa = PBXGroup;
 			children = (
-				FB42A84F2DF22ECE00164A2D /* TagYourMeet */,
+				FB42A95D2DF4B23D00164A2D /* TagYourMeat.entitlements */,
+				FB42A84F2DF22ECE00164A2D /* TagYourMeat */,
 				FB42A84E2DF22ECE00164A2D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,7 +62,7 @@
 		FB42A84E2DF22ECE00164A2D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				FB42A84D2DF22ECE00164A2D /* TagYourMeet.app */,
+				FB42A84D2DF22ECE00164A2D /* TagYourMeat.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,9 +70,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		FB42A84C2DF22ECE00164A2D /* TagYourMeet */ = {
+		FB42A84C2DF22ECE00164A2D /* TagYourMeat */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FB42A8582DF22ECF00164A2D /* Build configuration list for PBXNativeTarget "TagYourMeet" */;
+			buildConfigurationList = FB42A8582DF22ECF00164A2D /* Build configuration list for PBXNativeTarget "TagYourMeat" */;
 			buildPhases = (
 				FB42A8492DF22ECE00164A2D /* Sources */,
 				FB42A84A2DF22ECE00164A2D /* Frameworks */,
@@ -68,15 +83,15 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				FB42A84F2DF22ECE00164A2D /* TagYourMeet */,
+				FB42A84F2DF22ECE00164A2D /* TagYourMeat */,
 			);
-			name = TagYourMeet;
+			name = TagYourMeat;
 			packageProductDependencies = (
 				FB42A85E2DF2301F00164A2D /* FirebaseAuth */,
 				FB42A8602DF2301F00164A2D /* FirebaseFirestore */,
 			);
 			productName = TagYourMeet;
-			productReference = FB42A84D2DF22ECE00164A2D /* TagYourMeet.app */;
+			productReference = FB42A84D2DF22ECE00164A2D /* TagYourMeat.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -94,7 +109,7 @@
 					};
 				};
 			};
-			buildConfigurationList = FB42A8482DF22ECE00164A2D /* Build configuration list for PBXProject "TagYourMeet" */;
+			buildConfigurationList = FB42A8482DF22ECE00164A2D /* Build configuration list for PBXProject "TagYourMeat" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -111,7 +126,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				FB42A84C2DF22ECE00164A2D /* TagYourMeet */,
+				FB42A84C2DF22ECE00164A2D /* TagYourMeat */,
 			);
 		};
 /* End PBXProject section */
@@ -263,11 +278,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TagYourMeat.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XJPKYRAJFZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "/Users/jackrogers/Downloads/Xcode Projects/TagYourMeat/TagYourMeat/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = TagYourMeat;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -277,8 +296,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jacklr.TagYourMeet;
+				MARKETING_VERSION = 1.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacklr.TagYourMeat;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -291,11 +310,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TagYourMeat.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XJPKYRAJFZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "/Users/jackrogers/Downloads/Xcode Projects/TagYourMeat/TagYourMeat/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = TagYourMeat;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -305,8 +328,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jacklr.TagYourMeet;
+				MARKETING_VERSION = 1.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacklr.TagYourMeat;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -317,7 +340,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		FB42A8482DF22ECE00164A2D /* Build configuration list for PBXProject "TagYourMeet" */ = {
+		FB42A8482DF22ECE00164A2D /* Build configuration list for PBXProject "TagYourMeat" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				FB42A8562DF22ECF00164A2D /* Debug */,
@@ -326,7 +349,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FB42A8582DF22ECF00164A2D /* Build configuration list for PBXNativeTarget "TagYourMeet" */ = {
+		FB42A8582DF22ECF00164A2D /* Build configuration list for PBXNativeTarget "TagYourMeat" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				FB42A8592DF22ECF00164A2D /* Debug */,

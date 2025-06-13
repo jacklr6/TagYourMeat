@@ -25,7 +25,7 @@ struct TagYourMeet: App {
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                TagYourMeetMain()
+                TagYourMeatMain()
             }
         }
     }
@@ -33,5 +33,5 @@ struct TagYourMeet: App {
 
 
 #Preview {
-    TagYourMeetMain()
+    TagYourMeatMain()
 }

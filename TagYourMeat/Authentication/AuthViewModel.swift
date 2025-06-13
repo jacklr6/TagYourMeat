@@ -13,56 +13,79 @@ class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
     @Published var errorMessage: String?
     @Published var role: String?
+    @Published var firstName: String = ""
+    @Published var lastName: String = ""
+    @Published var isLoading = false
 
     private let db = Firestore.firestore()
+    
+    var needsRoleSelection: Bool {
+        isAuthenticated && role == nil
+    }
 
     init() {
         self.user = Auth.auth().currentUser
         self.isAuthenticated = user != nil
 
         if let user = user {
-            fetchRole(for: user.uid)
+            fetchUserProfile(for: user.uid)
         }
     }
 
     func signUp(email: String, password: String, firstName: String, lastName: String, completion: @escaping () -> Void) {
+        isLoading = true
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.errorMessage = "Sign Up Failed: \(error.localizedDescription)"
-                    return
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.errorMessage = error.localizedDescription
+                    self.isLoading = false
                 }
+                return
+            }
 
-                guard let user = result?.user else { return }
-                self.user = user
-                self.isAuthenticated = true
+            guard let user = result?.user else {
+                DispatchQueue.main.async { self.isLoading = false }
+                return
+            }
 
-                let db = Firestore.firestore()
-                db.collection("users").document(user.uid).setData([
-                    "firstName": firstName,
-                    "lastName": lastName
-                ], merge: true)
+            let userData: [String: Any] = [
+                "firstName": firstName,
+                "lastName": lastName,
+                "email": email
+            ]
 
-                completion()
+            self.db.collection("users").document(user.uid).setData(userData) { error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        self.errorMessage = error.localizedDescription
+                        self.isLoading = false
+                        return
+                    }
+
+                    self.user = user
+                    self.isAuthenticated = true
+                    self.fetchUserProfile(for: user.uid)
+                    self.isLoading = false
+                    completion()
+                }
             }
         }
     }
 
     func signIn(email: String, password: String, completion: @escaping () -> Void) {
+        isLoading = true
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
             DispatchQueue.main.async {
                 if let error = error {
                     self.errorMessage = "Sign In Failed: \(error.localizedDescription)"
+                    self.isLoading = false
                     return
                 }
 
                 self.user = result?.user
+                self.fetchUserProfile(for: result?.user.uid ?? "")
                 self.isAuthenticated = true
-
-                if let uid = result?.user.uid {
-                    self.fetchRole(for: uid)
-                }
-
+                self.isLoading = false
                 completion()
             }
         }
@@ -92,13 +115,25 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
-
-    func fetchRole(for uid: String) {
+    
+    func fetchUserProfile(for uid: String) {
         db.collection("users").document(uid).getDocument { snapshot, error in
+            if let error = error {
+                print("⚠️ Error fetching user profile: \(error.localizedDescription)")
+                return
+            }
+
+            guard let data = snapshot?.data() else {
+                print("⚠️ No data found for user \(uid)")
+                return
+            }
+
+            print("✅ Fetched user profile: \(data)")
+
             DispatchQueue.main.async {
-                if let data = snapshot?.data(), let role = data["role"] as? String {
-                    self.role = role
-                }
+                self.firstName = data["firstName"] as? String ?? ""
+                self.lastName = data["lastName"] as? String ?? ""
+                self.role = data["role"] as? String
             }
         }
     }

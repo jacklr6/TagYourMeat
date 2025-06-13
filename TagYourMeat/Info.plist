@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>TagYourMeat needs access to your location to provide a location for your NFC tags.</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>We use NFC to scan and manage meat packaging inventory.</string>
+</dict>
+</plist>
