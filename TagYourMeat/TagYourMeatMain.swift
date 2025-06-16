@@ -47,7 +47,7 @@ struct TagYourMeatMain: View {
                         if auth.isAuthenticated {
                             HStack {
                                 Image(systemName: "person.circle")
-                                Text("\(auth.firstName.first ?? "?")\(auth.lastName.first ?? "?")")
+                                Text("\(auth.firstName.first?.uppercased() ?? "?")\(auth.lastName.first?.uppercased() ?? "?")")
                             }
                         } else {
                             Image(systemName: "person.circle")

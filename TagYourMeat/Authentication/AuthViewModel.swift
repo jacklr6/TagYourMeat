@@ -6,9 +6,16 @@
 //
 
 import FirebaseAuth
+import FirebaseCore
 import FirebaseFirestore
+import AuthenticationServices
+import CryptoKit
+import GoogleSignIn
+import GoogleSignInSwift
 
-class AuthViewModel: ObservableObject {
+private var currentNonce: String?
+
+class AuthViewModel: NSObject, ObservableObject {
     @Published var user: User? = Auth.auth().currentUser
     @Published var isAuthenticated = false
     @Published var errorMessage: String?
@@ -23,7 +30,11 @@ class AuthViewModel: ObservableObject {
         isAuthenticated && role == nil
     }
 
-    init() {
+    override init() {
+        super.init()
+    }
+    
+    func setup() {
         self.user = Auth.auth().currentUser
         self.isAuthenticated = user != nil
 
@@ -64,6 +75,8 @@ class AuthViewModel: ObservableObject {
 
                     self.user = user
                     self.isAuthenticated = true
+                    self.role = "Customer"
+                    self.setRole("Customer")
                     self.fetchUserProfile(for: user.uid)
                     self.isLoading = false
                     completion()
@@ -134,6 +147,142 @@ class AuthViewModel: ObservableObject {
                 self.firstName = data["firstName"] as? String ?? ""
                 self.lastName = data["lastName"] as? String ?? ""
                 self.role = data["role"] as? String
+            }
+        }
+    }
+    
+    // MARK: - Sign In With Apple
+    private func randomNonceString(length: Int = 32) -> String {
+        let charset: [Character] =
+            Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remainingLength = length
+
+        while remainingLength > 0 {
+            let random = (0..<16).map { _ in UInt8.random(in: 0...255) }
+
+            random.forEach { byte in
+                if remainingLength == 0 { return }
+                if byte < charset.count {
+                    result.append(charset[Int(byte)])
+                    remainingLength -= 1
+                }
+            }
+        }
+
+        return result
+    }
+
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashed = SHA256.hash(data: inputData)
+        return hashed.map { String(format: "%02x", $0) }.joined()
+    }
+    
+    func startSignInWithApple() {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = sha256(nonce)
+
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
+    }
+
+}
+
+extension AuthViewModel: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        return UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first ?? UIWindow()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let nonce = currentNonce,
+              let appleIDToken = appleIDCredential.identityToken,
+              let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+            self.errorMessage = "Apple Sign-In failed: Missing credentials."
+            return
+        }
+
+        let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
+
+        isLoading = true
+        Auth.auth().signIn(with: credential) { result, error in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                if let error = error {
+                    self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
+                    return
+                }
+
+                guard let user = result?.user else { return }
+                self.user = user
+                self.isAuthenticated = true
+                self.fetchUserProfile(for: user.uid)
+
+                // Save name if it's a new user
+                if let fullName = appleIDCredential.fullName {
+                    let first = fullName.givenName ?? ""
+                    let last = fullName.familyName ?? ""
+
+                    let userData: [String: Any] = [
+                        "firstName": first,
+                        "lastName": last,
+                        "email": user.email ?? ""
+                    ]
+                    self.db.collection("users").document(user.uid).setData(userData, merge: true)
+                    self.firstName = first
+                    self.lastName = last
+                }
+            }
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        self.errorMessage = "Apple Sign-In error: \(error.localizedDescription)"
+    }
+}
+
+// MARK: - Sign In With Google
+extension AuthViewModel {
+    func signInWithGoogle(presentingViewController: UIViewController) {
+        guard let clientID = FirebaseApp.app()?.options.clientID else { return }
+
+        let config = GIDConfiguration(clientID: clientID)
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController) { result, error in
+            if let error = error {
+                self.errorMessage = error.localizedDescription
+                return
+            }
+
+            guard
+                let user = result?.user,
+                let idToken = user.idToken?.tokenString
+            else {
+                self.errorMessage = "Google Sign-In failed to get token"
+                return
+            }
+
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
+
+            Auth.auth().signIn(with: credential) { authResult, error in
+                if let error = error {
+                    self.errorMessage = "Firebase Sign-In with Google failed: \(error.localizedDescription)"
+                    return
+                }
+
+                self.user = authResult?.user
+                self.isAuthenticated = true
+                
+                self.fetchUserProfile(for: authResult?.user.uid ?? "")
             }
         }
     }

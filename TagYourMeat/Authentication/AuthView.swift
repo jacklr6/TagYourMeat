@@ -6,9 +6,15 @@
 //
 
 import SwiftUI
+import AuthenticationServices
+import FirebaseAuth
+import GoogleSignInSwift
+import FirebaseCore
+import GoogleSignIn
 
 struct AuthView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject private var auth: AuthViewModel
     
     @State private var email = ""
@@ -68,10 +74,6 @@ struct AuthView: View {
                                             auth.setRole(newRole)
                                         }
                                     }
-                                    if auth.role == nil {
-                                        Text("(Select a Role)")
-                                            .foregroundColor(.secondary)
-                                    }
                                 }
                             }
                             .padding()
@@ -86,10 +88,6 @@ struct AuthView: View {
                         }
                     } else {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(.ultraThinMaterial)
-                                .frame(width: UIScreen.main.bounds.width * 0.75, height: isSignUp ? 325 : 225)
-                            
                             VStack {
                                 if isSignUp {
                                     Group {
@@ -114,33 +112,103 @@ struct AuthView: View {
                                         .multilineTextAlignment(.center)
                                 }
                                 
-                                Button(action: {
-                                    withAnimation {
+                                Group {
+                                    if isSignUp {
+                                        Button(action: {
+                                            withAnimation {
+                                                if password.count < 6 {
+                                                    auth.errorMessage = "Password must be at least 6 characters long."
+                                                } else if password.count > 48 {
+                                                    auth.errorMessage = "Password must be 48 characters or less."
+                                                } else {
+                                                    auth.signUp(email: email, password: password, firstName: firstName, lastName: lastName) {
+                                                        auth.errorMessage = nil
+                                                    }
+                                                }
+                                            }
+                                        }) {
+                                            Group {
+                                                if !auth.isLoading {
+                                                    Text("Create Account")
+                                                } else {
+                                                    ProgressView()
+                                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                }
+                                            }
+                                            .frame(width: 205, height: 27)
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                        .disabled(email.isEmpty && password.isEmpty && firstName.isEmpty && lastName.isEmpty)
+                                    } else {
+                                        Button(action: {
+                                            withAnimation {
+                                                auth.signIn(email: email, password: password) {
+                                                    auth.errorMessage = nil
+                                                    dismiss()
+                                                }
+                                            }
+                                        }) {
+                                            Group {
+                                                if !auth.isLoading {
+                                                    Text("Sign In")
+                                                } else {
+                                                    ProgressView()
+                                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                }
+                                            }
+                                            .frame(width: 205, height: 27)
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                        .disabled(email.isEmpty && password.isEmpty)
+                                    }
+                                    
+                                    if isSignUp {
+                                        SignInWithAppleButton(.signUp, onRequest: { request in
+                                            auth.startSignInWithApple()
+                                        }, onCompletion: { _ in })
+                                        .frame(height: 40)
+                                    } else {
+                                        SignInWithAppleButton(.signIn, onRequest: { request in
+                                            auth.startSignInWithApple()
+                                        }, onCompletion: { _ in })
+                                        .frame(height: 40)
+                                    }
+                                    
+                                    Group {
                                         if isSignUp {
-                                            if password.count < 6 {
-                                                auth.errorMessage = "Password must be at least 6 characters long."
-                                            } else if password.count > 48 {
-                                                auth.errorMessage = "Password must be 48 characters or less."
-                                            } else {
-                                                auth.signUp(email: email, password: password, firstName: firstName, lastName: lastName) { }
+                                            Button(action: {
+                                                handleGoogleSignIn()
+                                            }) {
+                                                HStack {
+                                                    Image("Google-Logo")
+                                                        .resizable()
+                                                        .frame(width: 15, height: 15)
+                                                    Text("Sign up with Google")
+                                                        .font(.system(size: 15, weight: .semibold))
+                                                }
                                             }
                                         } else {
-                                            auth.signIn(email: email, password: password) {
-                                                dismiss()
+                                            Button(action: {
+                                                handleGoogleSignIn()
+                                            }) {
+                                                HStack {
+                                                    Image("Google-Logo")
+                                                        .resizable()
+                                                        .frame(width: 15, height: 15)
+                                                    Text("Sign in with Google")
+                                                        .font(.system(size: 15, weight: .medium))
+                                                        
+                                                }
                                             }
                                         }
                                     }
-                                }) {
-                                    if auth.isLoading {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                            .foregroundColor(.white)
-                                    } else {
-                                        Text(isSignUp ? "Create Account" : "Sign In")
-                                    }
+                                    .foregroundStyle(colorScheme == .dark ? .black : .white)
+                                    .frame(width: 230, height: 40)
+                                    .background(colorScheme == .dark ? .white : .black)
+                                    .cornerRadius(6)
+                                    .padding(.horizontal)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .transition(.move(edge: .top).combined(with: .opacity))
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
                                 
                                 Button(isSignUp ? "Already have an account? Sign In" : "No account? Sign Up") {
                                     withAnimation {
@@ -148,9 +216,14 @@ struct AuthView: View {
                                     }
                                 }
                             }
-                            .frame(width: 225)
+                            .frame(width: 230)
                             .animation(.easeInOut, value: isSignUp)
                         }
+                        .padding(40)
+                        .background(
+                            Color.white.opacity(0.275)
+                        )
+                        .cornerRadius(20)
                     }
                 }
                 .padding()
@@ -161,8 +234,57 @@ struct AuthView: View {
                         }
                     }
                 }
+                .onAppear {
+                    auth.setup()
+                }
             }
             .toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+    
+    private func handleGoogleSignIn() {
+        guard let rootViewController = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow })?
+                .rootViewController else {
+            print("❌ Failed to get root view controller.")
+            return
+        }
+
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            print("❌ Missing Firebase client ID.")
+            return
+        }
+
+        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = config
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
+            if let error = error {
+                print("❌ Google Sign-In failed: \(error.localizedDescription)")
+                return
+            }
+
+            guard
+                let user = result?.user,
+                let idToken = user.idToken?.tokenString,
+                let accessToken = Optional(user.accessToken.tokenString)
+            else {
+                print("❌ Missing Google tokens.")
+                return
+            }
+
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
+
+            Auth.auth().signIn(with: credential) { authResult, error in
+                if let error = error {
+                    print("❌ Firebase Sign-In with Google failed: \(error.localizedDescription)")
+                    return
+                }
+
+                print("✅ User signed in with Google: \(authResult?.user.uid ?? "")")
+            }
         }
     }
 }
