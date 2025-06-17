@@ -70,6 +70,9 @@ struct TagYourMeatMain: View {
                     }
                 }
             }
+            .onAppear {
+                auth.setup()
+            }
         }
         .sheet(isPresented: $moveToAuthView) {
             AuthView()

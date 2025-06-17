@@ -89,21 +89,23 @@ struct AuthView: View {
                     } else {
                         ZStack {
                             VStack {
-                                if isSignUp {
-                                    Group {
-                                        TextField("First Name", text: $firstName)
-                                        TextField("Last Name", text: $lastName)
+                                Group {
+                                    if isSignUp {
+                                        Group {
+                                            TextField("First Name", text: $firstName)
+                                            TextField("Last Name", text: $lastName)
+                                        }
+                                        .textFieldStyle(.roundedBorder)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
                                     }
-                                    .textFieldStyle(.roundedBorder)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                    
+                                    TextField("Email", text: $email)
+                                        .textFieldStyle(.roundedBorder)
+                                        .autocapitalization(.none)
+                                    
+                                    SecureField("Password", text: $password)
+                                        .textFieldStyle(.roundedBorder)
                                 }
-                                
-                                TextField("Email", text: $email)
-                                    .textFieldStyle(.roundedBorder)
-                                    .autocapitalization(.none)
-                                
-                                SecureField("Password", text: $password)
-                                    .textFieldStyle(.roundedBorder)
                                 
                                 if let error = auth.errorMessage {
                                     Text(error)
@@ -197,16 +199,16 @@ struct AuthView: View {
                                                         .frame(width: 15, height: 15)
                                                     Text("Sign in with Google")
                                                         .font(.system(size: 15, weight: .medium))
-                                                        
                                                 }
                                             }
                                         }
                                     }
-                                    .foregroundStyle(colorScheme == .dark ? .black : .white)
-                                    .frame(width: 230, height: 40)
-                                    .background(colorScheme == .dark ? .white : .black)
+                                    .foregroundStyle(colorScheme == .light ? .black : .white)
+                                    .frame(width: 230, height: 39)
+                                    .background(colorScheme == .light ? .white : .black)
                                     .cornerRadius(6)
                                     .padding(.horizontal)
+                                    .padding(.bottom, 5)
                                 }
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                                 
