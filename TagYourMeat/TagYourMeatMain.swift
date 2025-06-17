@@ -39,9 +39,9 @@ struct TagYourMeatMain: View {
                 } else {
                     List {
                         ForEach(auth.meatTags) { tag in
-                            VStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading) {
                                 Text(tag.itemName)
-                                    .font(.headline)
+                                    .font(.system(size: 22, weight: .semibold))
                                 Text("Location: \(tag.packagedLocation)")
                                     .font(.subheadline)
                                 Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
