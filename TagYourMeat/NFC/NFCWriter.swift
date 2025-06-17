@@ -29,20 +29,20 @@ extension NFCWriter: NFCNDEFReaderSessionDelegate {
 
     func readerSession(_ session: NFCNDEFReaderSession, didDetect tags: [NFCNDEFTag]) {
         guard let tag = tags.first else {
-            session.invalidate(errorMessage: "No tag detected.")
+            session.invalidate(errorMessage: "No Tag Detected.")
             completion?(false, nil)
             return
         }
 
         session.connect(to: tag) { error in
             if let error = error {
-                session.invalidate(errorMessage: "Failed to connect to tag.")
+                session.invalidate(errorMessage: "Failed to Connect to Tag.")
                 self.completion?(false, error)
                 return
             }
 
             guard let payload = NFCNDEFPayload.wellKnownTypeTextPayload(string: self.payloadText, locale: .current) else {
-                session.invalidate(errorMessage: "Invalid payload.")
+                session.invalidate(errorMessage: "Invalid Payload.")
                 self.completion?(false, nil)
                 return
             }
@@ -51,7 +51,7 @@ extension NFCWriter: NFCNDEFReaderSessionDelegate {
 
             tag.queryNDEFStatus { status, _, error in
                 if let error = error {
-                    session.invalidate(errorMessage: "Error checking tag status.")
+                    session.invalidate(errorMessage: "Error Checking Tag Status.")
                     self.completion?(false, error)
                     return
                 }
@@ -59,16 +59,16 @@ extension NFCWriter: NFCNDEFReaderSessionDelegate {
                 if status == .readWrite {
                     tag.writeNDEF(message) { error in
                         if let error = error {
-                            session.invalidate(errorMessage: "Failed to write tag.")
+                            session.invalidate(errorMessage: "Failed to Write Tag.")
                             self.completion?(false, error)
                         } else {
-                            session.alertMessage = "Tag written successfully."
+                            session.alertMessage = "Tag Written Successfully."
                             session.invalidate()
                             self.completion?(true, nil)
                         }
                     }
                 } else {
-                    session.invalidate(errorMessage: "Tag is not writable.")
+                    session.invalidate(errorMessage: "Tag is Not Writable.")
                     self.completion?(false, nil)
                 }
             }

@@ -211,7 +211,11 @@ extension AuthViewModel: ASAuthorizationControllerDelegate, ASAuthorizationContr
             return
         }
 
-        let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
+        let credential = OAuthProvider.credential(
+            providerID: .apple,
+            idToken: idTokenString,
+            rawNonce: nonce
+        )
 
         isLoading = true
         Auth.auth().signIn(with: credential) { result, error in
@@ -226,8 +230,7 @@ extension AuthViewModel: ASAuthorizationControllerDelegate, ASAuthorizationContr
                 self.user = user
                 self.isAuthenticated = true
                 self.fetchUserProfile(for: user.uid)
-
-                // Save name if it's a new user
+                
                 if let fullName = appleIDCredential.fullName {
                     let first = fullName.givenName ?? ""
                     let last = fullName.familyName ?? ""
@@ -255,7 +258,7 @@ extension AuthViewModel {
     func signInWithGoogle(presentingViewController: UIViewController) {
         guard let clientID = FirebaseApp.app()?.options.clientID else { return }
 
-        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
 
         GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController) { result, error in
             if let error = error {

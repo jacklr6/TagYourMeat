@@ -45,7 +45,7 @@ extension NFCReader: NFCNDEFReaderSessionDelegate {
 
                 let payload = record.payload
                 guard payload.count > 1 else {
-                    result += "[Empty or invalid payload]\n"
+                    result += "[Empty or Invalid Payload]\n"
                     continue
                 }
 
