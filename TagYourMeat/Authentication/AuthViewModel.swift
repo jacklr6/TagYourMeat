@@ -15,6 +15,13 @@ import GoogleSignInSwift
 
 private var currentNonce: String?
 
+struct MeatTag: Codable, Identifiable {
+    let id: String
+    let itemName: String
+    let packagedLocation: String
+    let datePackaged: Date
+}
+
 class AuthViewModel: NSObject, ObservableObject {
     @Published var user: User? = Auth.auth().currentUser
     @Published var isAuthenticated = false
@@ -23,6 +30,7 @@ class AuthViewModel: NSObject, ObservableObject {
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var isLoading = false
+    @Published var meatTags: [MeatTag] = []
 
     private let db = Firestore.firestore()
     
@@ -149,6 +157,75 @@ class AuthViewModel: NSObject, ObservableObject {
                 self.role = data["role"] as? String
             }
         }
+    }
+    
+    // MARK: - Storing Meat Tags in Firestore
+    func addMeatTag(itemName: String, packagedLocation: String, tagID: String? = nil, completion: @escaping (Bool) -> Void) {
+        guard let user = user else {
+            self.errorMessage = "No authenticated user."
+            completion(false)
+            return
+        }
+
+        let tagID = tagID ?? UUID().uuidString
+        let tagData: [String: Any] = [
+            "id": tagID,
+            "itemName": itemName,
+            "packagedLocation": packagedLocation,
+            "datePackaged": Timestamp(date: Date())
+        ]
+
+        db.collection("users")
+            .document(user.uid)
+            .collection("meatTags")
+            .document(tagID)
+            .setData(tagData) { error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        self.errorMessage = "Failed to save meat tag: \(error.localizedDescription)"
+                        completion(false)
+                        return
+                    }
+                    completion(true)
+                }
+            }
+    }
+    
+    func fetchMeatTags() {
+        guard let user = user else { return }
+
+        db.collection("users")
+            .document(user.uid)
+            .collection("meatTags")
+            .order(by: "datePackaged", descending: true)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        self.errorMessage = "Failed to load meat tags: \(error.localizedDescription)"
+                    }
+                    return
+                }
+
+                guard let documents = snapshot?.documents else { return }
+
+                let tags = documents.compactMap { doc -> MeatTag? in
+                    let data = doc.data()
+                    guard let itemName = data["itemName"] as? String,
+                          let packagedLocation = data["packagedLocation"] as? String,
+                          let timestamp = data["datePackaged"] as? Timestamp else { return nil }
+
+                    return MeatTag(
+                        id: data["id"] as? String ?? doc.documentID,
+                        itemName: itemName,
+                        packagedLocation: packagedLocation,
+                        datePackaged: timestamp.dateValue()
+                    )
+                }
+
+                DispatchQueue.main.async {
+                    self.meatTags = tags
+                }
+            }
     }
     
     // MARK: - Sign In With Apple

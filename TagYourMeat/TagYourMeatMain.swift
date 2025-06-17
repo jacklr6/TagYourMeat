@@ -37,16 +37,26 @@ struct TagYourMeatMain: View {
                         }
                     }
                 } else {
-                    VStack {
-                        Text("Welcome Back, \(auth.firstName) \(auth.lastName)")
-                        Text("Email: \(auth.user?.email ?? "User")")
-                        Text("Role: \(auth.role ?? "unknown")")
-                        .buttonStyle(.bordered)
+                    List {
+                        ForEach(auth.meatTags) { tag in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(tag.itemName)
+                                    .font(.headline)
+                                Text("Location: \(tag.packagedLocation)")
+                                    .font(.subheadline)
+                                Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.vertical, 5)
+                        }
                     }
-                    .frame(width: UIScreen.main.bounds.width * 0.75, height: 300)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(20)
-                    .shadow(color: .blue, radius: 20, x: 0, y: 0)
+                    .onAppear {
+                        auth.fetchMeatTags()
+                    }
+                    .refreshable {
+                        auth.fetchMeatTags()
+                    }
                 }
             }
             .navigationTitle("TagYourMeat")

@@ -5,10 +5,20 @@
 //  Created by Jack Rogers on 6/6/25.
 //
 
+import Foundation
 import SwiftUI
 import CoreNFC
 
+enum NFCFlowRoute: Hashable, Codable {
+    case confirmation(itemName: String, packagedLocation: String, tagID: String)
+}
+
+struct NFCNavigationItem: Hashable, Codable {
+    let route: NFCFlowRoute
+}
+
 struct ButcherNFCView: View {
+    @Environment(\.dismiss) var dismissButcherNFCView
     @StateObject private var locationManager = LocationManager()
     @StateObject private var auth = AuthViewModel()
     
@@ -19,7 +29,6 @@ struct ButcherNFCView: View {
     @State private var nfcReader: NFCReader? = nil
     @State private var showingNFCAlert = false
     @State private var showingLocationAlert = false
-    
     @State private var showPackagingLocation = 0
     @State private var showStartWrite = 0
     @State private var showTextTip: String = "Please Enter a Valid Item Name."
@@ -27,7 +36,8 @@ struct ButcherNFCView: View {
     @State private var checkedLocation: Bool = false
     @State private var buttonText: String = "Next Step"
     @State private var navigateToConfirmView = false
-    @State private var path = NavigationPath()
+    @State private var path: NavigationPath = NavigationPath()
+    @State private var generatedTagID: String = UUID().uuidString
     
     var body: some View {
         NavigationStack(path: $path) {
@@ -35,14 +45,6 @@ struct ButcherNFCView: View {
                 Rectangle()
                     .fill(LinearGradient(gradient: Gradient(colors: [Color.red, Color.red.opacity(0.1)]), startPoint: .bottom, endPoint: .top))
                     .ignoresSafeArea(edges: .all)
-                
-//                NavigationLink(
-//                    destination: ButcherNFCConfimation(itemName: "", packagedLocation: ""),
-//                    isActive: $navigateToConfirmView
-//                ) {
-//                    ButcherNFCConfimation(itemName: "", packagedLocation: "")
-//                }
-//                .hidden()
                 
                 VStack(spacing: 20) {
                     if !showTextTip.isEmpty {
@@ -139,16 +141,25 @@ struct ButcherNFCView: View {
                 }
             }
             .navigationTitle(Text("Write NFC Tags"))
-            .navigationDestination(for: ConfirmTagRoute.self) { route in
-                ButcherNFCConfimation(itemName: route.itemName, packagedLocation: route.packagedLocation, goToRoot: {
-                    path.removeLast(path.count)
-                })
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(auth.role ?? "")
+                }
+            }
+            .navigationDestination(for: NFCNavigationItem.self) { navItem in
+                switch navItem.route {
+                case .confirmation(let item, let location, let tagID):
+                    ButcherNFCConfirmation(itemName: item, packagedLocation: location, tagID: tagID) {
+                        path.removeLast(path.count)
+                        dismissButcherNFCView()
+                    }
+                }
             }
         }
     }
 
     private func startNFCWrite() {
-        let payload = "Item:\(itemName);Location:\(packagedLocation);Date:\(Date().ISO8601Format())"
+        let payload = "Item:\(itemName);Location:\(packagedLocation);Date:\(Date().ISO8601Format());ID:\(generatedTagID)"
         nfcWriter = NFCWriter()
         nfcWriter?.beginWriting(payload: payload) { success, error in
             nfcStatus = success ? "Tag Written!" : "Write Failed: \(error?.localizedDescription ?? "Unknown error")"
@@ -157,7 +168,7 @@ struct ButcherNFCView: View {
             if success {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     navigateToConfirmView = true
-                    path.append(ConfirmTagRoute(itemName: itemName, packagedLocation: packagedLocation))
+                    path.append(NFCNavigationItem(route: .confirmation(itemName: itemName, packagedLocation: packagedLocation, tagID: generatedTagID)))
                 }
             } else {
                 reenableTextField = 1
@@ -178,12 +189,16 @@ struct ButcherNFCView: View {
     }
 }
 
-struct ButcherNFCConfimation: View {
+struct ButcherNFCConfirmation: View {
     let itemName: String
     let packagedLocation: String
+    let tagID: String
     let goToRoot: () -> Void
     
+    @StateObject private var auth = AuthViewModel()
     @State private var dynamicColor: Color = .red
+    @State private var saveFailedAlert: Bool = false
+    @State private var infoAlert: Bool = false
     
     var body: some View {
         ZStack {
@@ -209,7 +224,18 @@ struct ButcherNFCConfimation: View {
                 
                 HStack {
                     Button(action: {
-                        goToRoot()
+                        auth.addMeatTag(
+                            itemName: itemName,
+                            packagedLocation: packagedLocation,
+                            tagID: tagID
+                        ) { success in
+                            if success {
+                                goToRoot()
+                                print("Write Successful")
+                            } else {
+                                saveFailedAlert = true
+                            }
+                        }
                     }) {
                         Text("Add to your \(Text("TagYourMeat").fontWeight(.semibold)) Account")
                             .frame(width: 125, height: 80)
@@ -233,8 +259,15 @@ struct ButcherNFCConfimation: View {
         }
         .navigationTitle(Text("Next Steps"))
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("\(auth.role ?? "")")
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Image(systemName: "info.circle")
+                Button(action: {
+                    infoAlert = true
+                }) {
+                    Image(systemName: "info.circle")
+                }
             }
         }
         .onAppear {
@@ -244,15 +277,20 @@ struct ButcherNFCConfimation: View {
                 }
             })
         }
+        .alert("Save Failed", isPresented: $saveFailedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Failed to save and sync with Firebase. Please try again later or when better connection is available.")
+        }
+        .alert("Info", isPresented: $infoAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You can choose to save this NFC Tag to your TagYourMeat account or not.")
+        }
     }
 }
 
-struct ConfirmTagRoute: Hashable {
-    let itemName: String
-    let packagedLocation: String
-}
-
 #Preview {
-//    ButcherNFCView()
-//    ButcherNFCConfimation(itemName: "Steak", packagedLocation: "Freezer C", goToRoot: )
+    ButcherNFCView()
+//    ButcherNFCConfirmation(itemName: "Steak", packagedLocation: "Freezer C", tagID: "1234567890")
 }
