@@ -53,14 +53,22 @@ struct ButcherNFCView: View {
                             .transition(.blurReplace)
                     }
                     
-                    TextField("Item Name (e.g. Ribeye Steak)", text: $itemName)
-                        .textFieldStyle(.roundedBorder)
+                    TextField("", text: $itemName, prompt: Text("Item Name (e.g. Ribeye Steak)").foregroundColor(.gray))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.white)
+                        .foregroundStyle(Color.black)
+                        .cornerRadius(5)
                         .disabled(reenableTextField == 1 ? false : showPackagingLocation == 1)
                     
-                    if showPackagingLocation == 1 {
+                    if showPackagingLocation == 0 {
                         HStack {
-                            TextField("Packaged at (e.g. Freezer A)", text: $packagedLocation)
-                                .textFieldStyle(.roundedBorder)
+                            TextField("", text: $packagedLocation, prompt: Text("Packaged at (e.g. Freezer A)").foregroundColor(.gray))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.white)
+                                .foregroundStyle(Color.black)
+                                .cornerRadius(5)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                                 .disabled(reenableTextField == 1 ? false : showStartWrite == 1)
                             

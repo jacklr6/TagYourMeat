@@ -39,14 +39,16 @@ struct TagYourMeatMain: View {
                 } else {
                     List {
                         ForEach(auth.meatTags) { tag in
-                            VStack(alignment: .leading) {
-                                Text(tag.itemName)
-                                    .font(.system(size: 22, weight: .semibold))
-                                Text("Location: \(tag.packagedLocation)")
-                                    .font(.subheadline)
-                                Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                            NavigationLink(destination: TaggedMeatDetails()) {
+                                VStack(alignment: .leading) {
+                                    Text(tag.itemName)
+                                        .font(.system(size: 22, weight: .semibold))
+                                    Text("Location: \(tag.packagedLocation)")
+                                        .font(.subheadline)
+                                    Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
                             }
                             .padding(.vertical, 5)
                         }
