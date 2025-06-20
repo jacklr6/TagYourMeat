@@ -8,11 +8,17 @@
 import SwiftUI
 
 struct TaggedMeatDetails: View {
+    let tag: MeatTag
+    
     var body: some View {
         Text("TaggedMeatDetails")
+        Text(tag.id)
+        Text(tag.itemName)
+        Text(tag.packagedLocation)
+        Text("\(tag.datePackaged)")
     }
 }
 
 #Preview {
-    TaggedMeatDetails()
+    TaggedMeatDetails(tag: MeatTag(id: "sample-tag-id", itemName: "Ribeye Steak", packagedLocation: "Freezer A", datePackaged: Date()))
 }

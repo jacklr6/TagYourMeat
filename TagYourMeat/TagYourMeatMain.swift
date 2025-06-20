@@ -15,7 +15,21 @@ struct TagYourMeatMain: View {
     
     var createAccountTip = CreateAccountTip()
     @State private var showCreateAccountTip: Bool = false
-
+    @State private var searchText = ""
+    
+    var filteredTags: [MeatTag] {
+        withAnimation {
+            if searchText.isEmpty {
+                return auth.MeatTags
+            } else {
+                return auth.MeatTags.filter {
+                    $0.itemName.localizedCaseInsensitiveContains(searchText) ||
+                    $0.packagedLocation.localizedCaseInsensitiveContains(searchText)
+                }
+            }
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             VStack {
@@ -38,8 +52,8 @@ struct TagYourMeatMain: View {
                     }
                 } else {
                     List {
-                        ForEach(auth.meatTags) { tag in
-                            NavigationLink(destination: TaggedMeatDetails()) {
+                        ForEach(filteredTags) { tag in
+                            NavigationLink(destination: TaggedMeatDetails(tag: tag)) {
                                 VStack(alignment: .leading) {
                                     Text(tag.itemName)
                                         .font(.system(size: 22, weight: .semibold))
@@ -52,12 +66,30 @@ struct TagYourMeatMain: View {
                             }
                             .padding(.vertical, 5)
                         }
+                        .onDelete { indexSet in
+                            indexSet.forEach { index in
+                                let tag = auth.MeatTags[index]
+                                auth.deleteMeatTag(tag)
+                            }
+                        }
                     }
+                    .animation(.easeInOut(duration: 2), value: auth.MeatTags.count)
+                    .animation(.easeInOut(duration: 2), value: filteredTags.count)
                     .onAppear {
-                        auth.fetchMeatTags()
+                        withAnimation {
+                            auth.fetchMeatTags()
+                        }
                     }
                     .refreshable {
-                        auth.fetchMeatTags()
+                        withAnimation {
+                            auth.fetchMeatTags()
+                        }
+                    }
+                    .searchable(text: $searchText, prompt: "Search Meat or Location")
+                    .overlay {
+                        if !searchText.isEmpty && filteredTags.isEmpty {
+                            ContentUnavailableView.search(text: searchText)
+                        }
                     }
                 }
             }
@@ -132,4 +164,12 @@ struct CreateAccountTip: Tip {
 
 #Preview {
     TagYourMeatMain()
+}
+
+extension MeatTag {
+    static let samples: [MeatTag] = [
+        MeatTag(id: "1", itemName: "Ribeye Steak", packagedLocation: "Freezer A", datePackaged: Date()),
+        MeatTag(id: "2", itemName: "Ground Beef", packagedLocation: "Freezer B", datePackaged: Date().addingTimeInterval(-86400)),
+        MeatTag(id: "3", itemName: "Chicken Breast", packagedLocation: "Fridge C", datePackaged: Date().addingTimeInterval(-172800))
+    ]
 }
