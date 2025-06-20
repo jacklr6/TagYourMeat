@@ -16,6 +16,7 @@ struct TaggedMeatDetails: View {
         Text(tag.itemName)
         Text(tag.packagedLocation)
         Text("\(tag.datePackaged)")
+        Text("Test One")
     }
 }
 
