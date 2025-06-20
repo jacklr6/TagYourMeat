@@ -61,7 +61,7 @@ struct ButcherNFCView: View {
                         .cornerRadius(5)
                         .disabled(reenableTextField == 1 ? false : showPackagingLocation == 1)
                     
-                    if showPackagingLocation == 0 {
+                    if showPackagingLocation == 1 {
                         HStack {
                             TextField("", text: $packagedLocation, prompt: Text("Packaged at (e.g. Freezer A)").foregroundColor(.gray))
                                 .padding(.horizontal, 10)
@@ -94,34 +94,45 @@ struct ButcherNFCView: View {
                         }
                     }
                     
-                    Button(buttonText) {
-                        if !itemName.isEmpty {
-                            withAnimation {
-                                showPackagingLocation = 1
+                    HStack {
+                        if showPackagingLocation == 1 {
+                            Button("Back") {
+                                withAnimation {
+                                    showPackagingLocation = 0
+                                }
                             }
-                        } else {
-                            withAnimation {
-                                showTextTip = "Please Enter a Valid Item Name."
-                            }
+                            .buttonStyle(.bordered)
                         }
                         
-                        if showPackagingLocation == 1 {
-                            if !packagedLocation.isEmpty {
-                                startNFCWrite()
+                        Button(buttonText) {
+                            if !itemName.isEmpty {
                                 withAnimation {
-                                    showStartWrite = 1
+                                    showPackagingLocation = 1
                                 }
                             } else {
                                 withAnimation {
-                                    showTextTip = "Please Enter a Valid Packaged Location."
+                                    showTextTip = "Please Enter a Valid Item Name."
+                                }
+                            }
+                            
+                            if showPackagingLocation == 1 {
+                                if !packagedLocation.isEmpty {
+                                    startNFCWrite()
+                                    withAnimation {
+                                        showStartWrite = 1
+                                    }
+                                } else {
+                                    withAnimation {
+                                        showTextTip = "Please Enter a Valid Packaged Location."
+                                    }
                                 }
                             }
                         }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .onChange(of: packagedLocation) { _, newValue in
-                        withAnimation {
-                            buttonText = newValue.isEmpty ? "Next Step" : "Scan NFC Tag"
+                        .buttonStyle(.borderedProminent)
+                        .onChange(of: packagedLocation) { _, newValue in
+                            withAnimation {
+                                buttonText = newValue.isEmpty ? "Next Step" : "Scan NFC Tag"
+                            }
                         }
                     }
                 }
@@ -232,16 +243,18 @@ struct ButcherNFCConfirmation: View {
                 
                 HStack {
                     Button(action: {
-                        auth.addMeatTag(
-                            itemName: itemName,
-                            packagedLocation: packagedLocation,
-                            tagID: tagID
-                        ) { success in
-                            if success {
-                                goToRoot()
-                                print("Write Successful")
-                            } else {
-                                saveFailedAlert = true
+                        withAnimation {
+                            auth.addMeatTag(
+                                itemName: itemName,
+                                packagedLocation: packagedLocation,
+                                tagID: tagID
+                            ) { success in
+                                if success {
+                                    goToRoot()
+                                    print("Write Successful")
+                                } else {
+                                    saveFailedAlert = true
+                                }
                             }
                         }
                     }) {

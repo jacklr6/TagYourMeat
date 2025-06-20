@@ -30,7 +30,7 @@ class AuthViewModel: NSObject, ObservableObject {
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var isLoading = false
-    @Published var meatTags: [MeatTag] = []
+    @Published var MeatTags: [MeatTag] = []
 
     private let db = Firestore.firestore()
     
@@ -177,7 +177,7 @@ class AuthViewModel: NSObject, ObservableObject {
 
         db.collection("users")
             .document(user.uid)
-            .collection("meatTags")
+            .collection("MeatTags")
             .document(tagID)
             .setData(tagData) { error in
                 DispatchQueue.main.async {
@@ -191,12 +191,32 @@ class AuthViewModel: NSObject, ObservableObject {
             }
     }
     
+    func deleteMeatTag(_ tag: MeatTag, completion: @escaping (Bool) -> Void = { _ in }) {
+        guard let user = user else { return }
+
+        db.collection("users")
+            .document(user.uid)
+            .collection("MeatTags")
+            .document(tag.id)
+            .delete { error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        self.errorMessage = "Failed to delete meat tag: \(error.localizedDescription)"
+                        completion(false)
+                    } else {
+                        self.MeatTags.removeAll { $0.id == tag.id }
+                        completion(true)
+                    }
+                }
+            }
+    }
+    
     func fetchMeatTags() {
         guard let user = user else { return }
 
         db.collection("users")
             .document(user.uid)
-            .collection("meatTags")
+            .collection("MeatTags")
             .order(by: "datePackaged", descending: true)
             .getDocuments { snapshot, error in
                 if let error = error {
@@ -223,7 +243,7 @@ class AuthViewModel: NSObject, ObservableObject {
                 }
 
                 DispatchQueue.main.async {
-                    self.meatTags = tags
+                    self.MeatTags = tags
                 }
             }
     }
