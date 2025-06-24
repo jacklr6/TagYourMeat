@@ -12,10 +12,12 @@ struct TagYourMeatMain: View {
     @AppStorage("appHasBeenLoaded") private var appHasBeenLoaded: Bool = false
     @State private var moveToAuthView = false
     @StateObject private var auth = AuthViewModel()
+    @StateObject private var network = NetworkManager()
     
     var createAccountTip = CreateAccountTip()
     @State private var showCreateAccountTip: Bool = false
     @State private var searchText = ""
+    @State private var wifiImageSwitcher: Bool = false
     
     var filteredTags: [MeatTag] {
         withAnimation {
@@ -51,45 +53,68 @@ struct TagYourMeatMain: View {
                         }
                     }
                 } else {
-                    List {
-                        ForEach(filteredTags) { tag in
-                            NavigationLink(destination: TaggedMeatDetails(tag: tag)) {
-                                VStack(alignment: .leading) {
-                                    Text(tag.itemName)
-                                        .font(.system(size: 22, weight: .semibold))
-                                    Text("Location: \(tag.packagedLocation)")
-                                        .font(.subheadline)
-                                    Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
+                    if network.isConnected {
+                        VStack {
+                            if auth.isFetching {
+                                List {
+                                    HStack {
+                                        Spacer()
+                                        ProgressView()
+                                        Spacer()
+                                    }
+                                }
+                                .searchable(text: $searchText, prompt: "Search Meat or Location")
+                            } else {
+                                List {
+                                    ForEach(filteredTags) { tag in
+                                        NavigationLink(destination: TaggedMeatDetails(tag: tag)) {
+                                            VStack(alignment: .leading) {
+                                                Text(tag.itemName)
+                                                    .font(.system(size: 22, weight: .semibold))
+                                                Text("Location: \(tag.packagedLocation)")
+                                                    .font(.subheadline)
+                                                Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                            }
+                                        }
+                                        .padding(.vertical, 5)
+                                    }
+                                    .onDelete { indexSet in
+                                        indexSet.forEach { index in
+                                            let tag = auth.MeatTags[index]
+                                            auth.deleteMeatTag(tag)
+                                        }
+                                    }
+                                }
+                                .animation(.easeInOut(duration: 2), value: auth.MeatTags.count)
+                                .animation(.easeInOut(duration: 2), value: filteredTags.count)
+                                .refreshable {
+                                    withAnimation {
+                                        auth.fetchMeatTags()
+                                    }
+                                }
+                                .searchable(text: $searchText, prompt: "Search Meat or Location")
+                                .overlay {
+                                    if !searchText.isEmpty && filteredTags.isEmpty {
+                                        ContentUnavailableView.search(text: searchText)
+                                    }
                                 }
                             }
-                            .padding(.vertical, 5)
                         }
-                        .onDelete { indexSet in
-                            indexSet.forEach { index in
-                                let tag = auth.MeatTags[index]
-                                auth.deleteMeatTag(tag)
-                            }
+                        .animation(.easeInOut, value: auth.isFetching)
+                    } else {
+                        VStack {
+                            Image(systemName: wifiImageSwitcher ? "wifi.exclamationmark" : "wifi")
+                                .font(.system(size: 48))
+                                .contentTransition(.symbolEffect(.replace))
+                                .frame(width: 50, height: 50)
+                            Text("Network Unavailable")
+                                .font(.system(size: 20, weight: .semibold))
+                            Text("Please connect to the internet to use TagYourMeat and it's services.")
                         }
-                    }
-                    .animation(.easeInOut(duration: 2), value: auth.MeatTags.count)
-                    .animation(.easeInOut(duration: 2), value: filteredTags.count)
-                    .onAppear {
-                        withAnimation {
-                            auth.fetchMeatTags()
-                        }
-                    }
-                    .refreshable {
-                        withAnimation {
-                            auth.fetchMeatTags()
-                        }
-                    }
-                    .searchable(text: $searchText, prompt: "Search Meat or Location")
-                    .overlay {
-                        if !searchText.isEmpty && filteredTags.isEmpty {
-                            ContentUnavailableView.search(text: searchText)
-                        }
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 10)
                     }
                 }
             }
@@ -102,7 +127,7 @@ struct TagYourMeatMain: View {
                         if auth.isAuthenticated {
                             HStack {
                                 Image(systemName: "person.circle")
-                                Text("\(auth.firstName.first?.uppercased() ?? "?")\(auth.lastName.first?.uppercased() ?? "?")")
+                                Text("\(auth.firstName.first?.uppercased() ?? "")\(auth.lastName.first?.uppercased() ?? "")")
                             }
                         } else {
                             Image(systemName: "person.circle")
@@ -113,14 +138,17 @@ struct TagYourMeatMain: View {
                     Text("\(auth.role ?? "")")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if auth.isAuthenticated {
+                    if auth.isAuthenticated && network.isConnected {
                         NavigationLink(destination: ButcherNFCView()) {
                             Image(systemName: "plus")
                         }
-                    } else {
-                        Button {
-                            showCreateAccountTip = true
-                        } label: {
+                    } else if auth.isAuthenticated == false {
+                        Button { showCreateAccountTip = true } label: {
+                            Image(systemName: "plus")
+                                .foregroundColor(.blue)
+                        }
+                    } else if network.isConnected == false {
+                        Button { } label: {
                             Image(systemName: "plus")
                                 .foregroundColor(.blue)
                         }
@@ -137,6 +165,12 @@ struct TagYourMeatMain: View {
             .onAppear {
                 auth.setup()
                 appHasBeenLoaded = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    wifiImageSwitcher = true
+                }
+                if network.isConnected {
+                    auth.fetchMeatTags()
+                }
             }
             .task {
                 do {

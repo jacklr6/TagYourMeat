@@ -12,6 +12,7 @@ import AuthenticationServices
 import CryptoKit
 import GoogleSignIn
 import GoogleSignInSwift
+import SwiftUI
 
 private var currentNonce: String?
 
@@ -30,6 +31,7 @@ class AuthViewModel: NSObject, ObservableObject {
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var isLoading = false
+    @Published var isFetching = false
     @Published var MeatTags: [MeatTag] = []
 
     private let db = Firestore.firestore()
@@ -140,16 +142,16 @@ class AuthViewModel: NSObject, ObservableObject {
     func fetchUserProfile(for uid: String) {
         db.collection("users").document(uid).getDocument { snapshot, error in
             if let error = error {
-                print("⚠️ Error fetching user profile: \(error.localizedDescription)")
+                print("Error Fetching User Profile: \(error.localizedDescription)")
                 return
             }
 
             guard let data = snapshot?.data() else {
-                print("⚠️ No data found for user \(uid)")
+                print("No Data Found for User \(uid)")
                 return
             }
 
-            print("✅ Fetched user profile: \(data)")
+            print("Fetched User Profile: \(data)")
 
             DispatchQueue.main.async {
                 self.firstName = data["firstName"] as? String ?? ""
@@ -162,7 +164,7 @@ class AuthViewModel: NSObject, ObservableObject {
     // MARK: - Storing Meat Tags in Firestore
     func addMeatTag(itemName: String, packagedLocation: String, tagID: String? = nil, completion: @escaping (Bool) -> Void) {
         guard let user = user else {
-            self.errorMessage = "No authenticated user."
+            self.errorMessage = "No Authenticated User."
             completion(false)
             return
         }
@@ -182,7 +184,7 @@ class AuthViewModel: NSObject, ObservableObject {
             .setData(tagData) { error in
                 DispatchQueue.main.async {
                     if let error = error {
-                        self.errorMessage = "Failed to save meat tag: \(error.localizedDescription)"
+                        self.errorMessage = "Failed to Save Meat Tag: \(error.localizedDescription)"
                         completion(false)
                         return
                     }
@@ -201,7 +203,7 @@ class AuthViewModel: NSObject, ObservableObject {
             .delete { error in
                 DispatchQueue.main.async {
                     if let error = error {
-                        self.errorMessage = "Failed to delete meat tag: \(error.localizedDescription)"
+                        self.errorMessage = "Failed to Delete Meat Tag: \(error.localizedDescription)"
                         completion(false)
                     } else {
                         self.MeatTags.removeAll { $0.id == tag.id }
@@ -212,6 +214,7 @@ class AuthViewModel: NSObject, ObservableObject {
     }
     
     func fetchMeatTags() {
+        isFetching = true
         guard let user = user else { return }
 
         db.collection("users")
@@ -222,6 +225,7 @@ class AuthViewModel: NSObject, ObservableObject {
                 if let error = error {
                     DispatchQueue.main.async {
                         self.errorMessage = "Failed to load meat tags: \(error.localizedDescription)"
+                        self.isFetching = false
                     }
                     return
                 }
@@ -244,6 +248,9 @@ class AuthViewModel: NSObject, ObservableObject {
 
                 DispatchQueue.main.async {
                     self.MeatTags = tags
+                    withAnimation {
+                        self.isFetching = false
+                    }
                 }
             }
     }
