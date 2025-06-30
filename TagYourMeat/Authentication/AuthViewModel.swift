@@ -17,17 +17,22 @@ import SwiftUI
 private var currentNonce: String?
 
 struct MeatTag: Codable, Identifiable {
-    let id: String
-    let itemName: String
-    let packagedLocation: String
-    let datePackaged: Date
+    var id: String
+    var itemName: String
+    var packagedLocation: String
+    var datePackaged: Date
+    
+    var notes: String?
+    var price: Double?
+    var expireDate: Date?
+    var quantity: Int?
 }
 
 class AuthViewModel: NSObject, ObservableObject {
     @Published var user: User? = Auth.auth().currentUser
     @Published var isAuthenticated = false
     @Published var errorMessage: String?
-    @Published var role: String?
+    @Published var role: String? = "User"
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var isLoading = false
@@ -85,8 +90,8 @@ class AuthViewModel: NSObject, ObservableObject {
 
                     self.user = user
                     self.isAuthenticated = true
-                    self.role = "Customer"
-                    self.setRole("Customer")
+                    self.role = "User"
+                    self.setRole("User")
                     self.fetchUserProfile(for: user.uid)
                     self.isLoading = false
                     completion()
@@ -140,23 +145,27 @@ class AuthViewModel: NSObject, ObservableObject {
     }
     
     func fetchUserProfile(for uid: String) {
-        db.collection("users").document(uid).getDocument { snapshot, error in
-            if let error = error {
-                print("Error Fetching User Profile: \(error.localizedDescription)")
-                return
-            }
-
-            guard let data = snapshot?.data() else {
-                print("No Data Found for User \(uid)")
-                return
-            }
-
-            print("Fetched User Profile: \(data)")
-
-            DispatchQueue.main.async {
-                self.firstName = data["firstName"] as? String ?? ""
-                self.lastName = data["lastName"] as? String ?? ""
-                self.role = data["role"] as? String
+        withAnimation {
+            isLoading = true
+            db.collection("users").document(uid).getDocument { snapshot, error in
+                if let error = error {
+                    print("Error Fetching User Profile: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = snapshot?.data() else {
+                    print("No Data Found for User \(uid)")
+                    return
+                }
+                
+                print("Fetched User Profile: \(data)")
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    self.firstName = data["firstName"] as? String ?? ""
+                    self.lastName = data["lastName"] as? String ?? ""
+                    self.role = data["role"] as? String
+                    self.isLoading = false
+                }
             }
         }
     }
@@ -242,17 +251,56 @@ class AuthViewModel: NSObject, ObservableObject {
                         id: data["id"] as? String ?? doc.documentID,
                         itemName: itemName,
                         packagedLocation: packagedLocation,
-                        datePackaged: timestamp.dateValue()
+                        datePackaged: timestamp.dateValue(),
+                        notes: data["notes"] as? String,
+                        price: data["price"] as? Double,
+                        expireDate: (data["expireDate"] as? Timestamp)?.dateValue(),
+                        quantity: data["quantity"] as? Int
                     )
                 }
 
-                DispatchQueue.main.async {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.MeatTags = tags
                     withAnimation {
                         self.isFetching = false
                     }
                 }
             }
+    }
+    
+    func updateMeatTag(_ tag: MeatTag, completion: @escaping (Bool) -> Void = { _ in }) {
+        withAnimation {
+            isLoading = true
+            guard let user = user else { return }
+            
+            var data: [String: Any] = [
+                "itemName": tag.itemName,
+                "packagedLocation": tag.packagedLocation,
+                "datePackaged": Timestamp(date: tag.datePackaged),
+                "id": tag.id
+            ]
+            
+            if let notes = tag.notes { data["notes"] = notes }
+            if let price = tag.price { data["price"] = price }
+            if let expireDate = tag.expireDate { data["expireDate"] = Timestamp(date: expireDate) }
+            if let quantity = tag.quantity { data["quantity"] = quantity }
+            
+            db.collection("users")
+                .document(user.uid)
+                .collection("MeatTags")
+                .document(tag.id)
+                .setData(data, merge: true) { error in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if let error = error {
+                            self.errorMessage = "Failed to Update Meat Tag: \(error.localizedDescription)"
+                            completion(false)
+                            return
+                        }
+                        self.isLoading = false
+                        completion(true)
+                    }
+                }
+        }
     }
     
     // MARK: - Sign In With Apple

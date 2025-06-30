@@ -67,7 +67,7 @@ struct TagYourMeatMain: View {
                             } else {
                                 List {
                                     ForEach(filteredTags) { tag in
-                                        NavigationLink(destination: TaggedMeatDetails(tag: tag)) {
+                                        NavigationLink(destination: TaggedMeatDetails(tag: tag).environmentObject(auth)) {
                                             VStack(alignment: .leading) {
                                                 Text(tag.itemName)
                                                     .font(.system(size: 22, weight: .semibold))
@@ -118,6 +118,9 @@ struct TagYourMeatMain: View {
                     }
                 }
             }
+            .onChange(of: auth.user?.email) { _, newValue in
+                auth.fetchMeatTags()
+            }
             .navigationTitle("TagYourMeat")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -142,15 +145,10 @@ struct TagYourMeatMain: View {
                         NavigationLink(destination: ButcherNFCView()) {
                             Image(systemName: "plus")
                         }
-                    } else if auth.isAuthenticated == false {
+                    } else if auth.isAuthenticated == false || network.isConnected == false {
                         Button { showCreateAccountTip = true } label: {
                             Image(systemName: "plus")
-                                .foregroundColor(.blue)
-                        }
-                    } else if network.isConnected == false {
-                        Button { } label: {
-                            Image(systemName: "plus")
-                                .foregroundColor(.blue)
+                                .foregroundColor(network.isConnected ? .gray : .blue)
                         }
                     }
                 }

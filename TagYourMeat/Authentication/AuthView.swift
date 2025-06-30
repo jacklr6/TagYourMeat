@@ -22,8 +22,9 @@ struct AuthView: View {
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var isSignUp = false
+    @State private var showAppRoleAlert: Bool = false
     
-    var roleOptions: [String] = ["Customer", "Butcher"]
+    var roleOptions: [String] = ["User", "Butcher"]
 
     var body: some View {
         NavigationStack {
@@ -40,42 +41,59 @@ struct AuthView: View {
                                 .frame(width: UIScreen.main.bounds.width * 0.75, height: 300)
                             
                             VStack {
-                                VStack {
-                                    Text("Name:")
-                                        .fontWeight(.semibold)
-                                    TextField("First Name", text: $auth.firstName)
-                                        .frame(width: 225)
-                                        .textFieldStyle(.roundedBorder)
-                                    TextField("Last Name", text: $auth.lastName)
-                                        .frame(width: 225)
-                                        .textFieldStyle(.roundedBorder)
-                                }
-                                .padding(.bottom, 10)
-                                
-                                VStack {
-                                    Text("Email:")
-                                        .fontWeight(.semibold)
-                                    Text("\(auth.user?.email ?? "User")")
-                                }
-                                .padding(.bottom, 10)
-                                
-                                VStack {
-                                    Text("Role:")
-                                        .fontWeight(.semibold)
-                                        .padding(.bottom, -12)
-                                    Picker("Role", selection: $auth.role) {
-                                        ForEach(roleOptions, id: \.self) { role in
-                                            Text(role).tag(role)
-                                        }
+                                if auth.isLoading {
+                                    ProgressView()
+                                } else {
+                                    VStack {
+                                        Text("Name:")
+                                            .fontWeight(.semibold)
+                                        TextField("First Name", text: $auth.firstName)
+                                            .frame(width: 225)
+                                            .textFieldStyle(.roundedBorder)
+                                        TextField("Last Name", text: $auth.lastName)
+                                            .frame(width: 225)
+                                            .textFieldStyle(.roundedBorder)
                                     }
-                                    .pickerStyle(.automatic)
-                                    .onChange(of: auth.role) { _, newRole in
-                                        if let newRole = newRole {
-                                            auth.setRole(newRole)
+                                    .padding(.bottom, 10)
+                                    
+                                    VStack {
+                                        Text("Email:")
+                                            .fontWeight(.semibold)
+                                        Text("\(auth.user?.email ?? "User")")
+                                    }
+                                    .padding(.bottom, 10)
+                                    
+                                    VStack {
+                                        HStack {
+                                            Text("App Role:")
+                                                .fontWeight(.semibold)
+                                            Image(systemName: "info.circle")
+                                                .onTapGesture {
+                                                    showAppRoleAlert = true
+                                                }
                                         }
+                                        .padding(.bottom, -12)
+                                        Picker("Role", selection: $auth.role) {
+                                            ForEach(roleOptions, id: \.self) { role in
+                                                Text(role).tag(role)
+                                            }
+                                        }
+                                        .onAppear {
+                                            if auth.role == nil {
+                                                auth.role = "User"
+                                            }
+                                        }
+                                        .pickerStyle(.automatic)
+                                        .onChange(of: auth.role) { _, newRole in
+                                            if let newRole = newRole {
+                                                auth.setRole(newRole)
+                                            }
+                                        }
+                                        .tint(.black)
                                     }
                                 }
                             }
+                            .animation(.easeInOut, value: auth.isLoading)
                             .padding()
                             .toolbar {
                                 ToolbarItem(placement: .topBarLeading) {
@@ -241,6 +259,11 @@ struct AuthView: View {
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)
+        }
+        .alert("TagYourMeat Role", isPresented: $showAppRoleAlert) {
+            Button("OK", role: .cancel) { showAppRoleAlert = false }
+        } message: {
+            Text("Choose your app interface based on your needs. The USER interface allows you to scan in tags already scanned by your butcher. The BUTCHER interface allows you to write information to an NFC tag for the consumer.")
         }
     }
     

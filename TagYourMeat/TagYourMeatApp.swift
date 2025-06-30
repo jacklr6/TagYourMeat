@@ -26,11 +26,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct TagYourMeet: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var auth = AuthViewModel()
     
     var body: some Scene {
         WindowGroup {
             NavigationView {
                 TagYourMeatMain()
+                    .environmentObject(auth)
             }
         }
     }
