@@ -248,6 +248,13 @@ struct AuthView: View {
                 }
                 .padding()
                 .toolbar {
+                    if !auth.isAuthenticated {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Text(isSignUp ? "Create an Account" : "Sign In")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { dismiss() } label: {
                             Image(systemName: "xmark")

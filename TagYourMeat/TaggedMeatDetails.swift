@@ -26,9 +26,13 @@ struct TaggedMeatDetails: View {
                 
                 Section(header: Text("Details")) {
                     DatePicker("Expire Date", selection: Binding($tag.expireDate, replacingNilWith: tag.datePackaged + 182.5*24*60*60), displayedComponents: .date)
-                    Text("\(tag.price ?? 0.0, format: .currency(code: "USD"))")
-                        .contentTransition(.numericText())
-                        .onTapGesture { showPricePicker = true }
+                    HStack {
+                        Text("\(tag.price ?? 0.0, format: .currency(code: "USD"))")
+                            .contentTransition(.numericText())
+                        Spacer()
+                        Text("/\(tag.unit ?? "unit")")
+                    }
+                    .onTapGesture { showPricePicker = true }
                     HStack {
                         HStack {
                             Text("Quantity:")
@@ -43,25 +47,27 @@ struct TaggedMeatDetails: View {
                 }
                 .animation(.default, value: tag.price)
                 
-                Button("Save Changes") {
+                Button(action: {
                     auth.updateMeatTag(tag) { success in
                         if success { dismiss() }
                     }
+                }) {
+                    HStack {
+                        Text("Save Changes")
+                        Spacer()
+                        if auth.isLoading {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "checkmark.circle")
+                        }
+                    }
+                    .fontWeight(.semibold)
                 }
             }
             .navigationTitle("Edit Meat Tag")
             .sheet(isPresented: $showPricePicker) {
-                PricePickerView(price: Binding($tag.price, replacingNilWith: 0.0))
+                PricePickerView(price: Binding($tag.price, replacingNilWith: 0.0), unit: Binding($tag.unit, replacingNilWith: "unit"))
                     .presentationDetents([.medium, .large])
-            }
-            
-            if auth.isLoading {
-                ZStack {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .ignoresSafeArea(edges: .all)
-                    ProgressView()
-                }
             }
         }
     }
@@ -69,6 +75,7 @@ struct TaggedMeatDetails: View {
 
 struct PricePickerView: View {
     @Binding var price: Double
+    @Binding var unit: String
     @State private var unitPickerSelection: String = "unit"
     
     var unitOptions: [String] = ["unit", "lb", "oz", "kg"]
@@ -83,27 +90,23 @@ struct PricePickerView: View {
                     .keyboardType(.decimalPad)
                     .mask(
                         HStack(spacing: 0) {
-                            LinearGradient(
-                                gradient: Gradient(colors: [.clear, .black]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 50)
+                            LinearGradient(gradient: Gradient(colors: [.clear, .black]), startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 50)
 
-                            Rectangle().fill(Color.black)
+                            Rectangle()
+                                .fill(Color.black)
 
-                            LinearGradient(
-                                gradient: Gradient(colors: [.black, .clear]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 50)
+                            LinearGradient(gradient: Gradient(colors: [.black, .clear]), startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 50)
                         }
                     )
                 Text("/\(unitPickerSelection)")
                     .font(.system(size: 24, weight: .medium, design: .rounded))
                     .offset(y: 40)
                     .padding(.horizontal, 15)
+                    .onChange(of: unitPickerSelection) { _, newValue in
+                        unit = newValue
+                    }
             }
             Divider()
                 .frame(width: UIScreen.main.bounds.width * 0.85)

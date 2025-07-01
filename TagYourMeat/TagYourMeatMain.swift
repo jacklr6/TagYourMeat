@@ -18,6 +18,7 @@ struct TagYourMeatMain: View {
     @State private var showCreateAccountTip: Bool = false
     @State private var searchText = ""
     @State private var wifiImageSwitcher: Bool = false
+    @AppStorage("appOpenCount") private var appOpenCount: Int = 0
     
     var filteredTags: [MeatTag] {
         withAnimation {
@@ -153,9 +154,7 @@ struct TagYourMeatMain: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: {
-                        
-                    }) {
+                    NavigationLink(destination: TagYourMeatSettings()) {
                         Image(systemName: "gear")
                     }
                 }
@@ -163,6 +162,10 @@ struct TagYourMeatMain: View {
             .onAppear {
                 auth.setup()
                 appHasBeenLoaded = true
+                appOpenCount += 1
+                if appOpenCount <= 1 {
+                    moveToAuthView = true
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     wifiImageSwitcher = true
                 }
@@ -172,8 +175,6 @@ struct TagYourMeatMain: View {
             }
             .task {
                 do {
-//                    Reset Tips
-//                    try Tips.resetDatastore()
                     try Tips.configure()
                     print("TipKit Configured!")
                 } catch {

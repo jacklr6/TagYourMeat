@@ -24,6 +24,7 @@ struct MeatTag: Codable, Identifiable {
     
     var notes: String?
     var price: Double?
+    var unit: String?
     var expireDate: Date?
     var quantity: Int?
 }
@@ -282,6 +283,7 @@ class AuthViewModel: NSObject, ObservableObject {
             
             if let notes = tag.notes { data["notes"] = notes }
             if let price = tag.price { data["price"] = price }
+            if let unit = tag.unit { data["unit"] = unit }
             if let expireDate = tag.expireDate { data["expireDate"] = Timestamp(date: expireDate) }
             if let quantity = tag.quantity { data["quantity"] = quantity }
             
