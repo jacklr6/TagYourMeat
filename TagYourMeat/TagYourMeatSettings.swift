@@ -107,7 +107,7 @@ struct DeveloperView: View {
                                     appOpenCount = 0
                                 }
                             }) {
-                                Text("Reset App Open Count")
+                                Text("Reset App Open Count (\(appOpenCount))")
                             }
                         }
                         .tint(.red)

@@ -139,7 +139,7 @@ struct ButcherNFCView: View {
                 .padding(.vertical, 40)
                 .padding(.horizontal, 20)
                 .frame(width: 360)
-                .background(Color.white.opacity(0.275))
+                .background(.ultraThinMaterial)
                 .cornerRadius(20)
                 .toolbar {
                     ToolbarItem(placement: .principal) {

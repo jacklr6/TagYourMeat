@@ -145,6 +145,34 @@ class AuthViewModel: NSObject, ObservableObject {
         }
     }
     
+    func setFirstName(_ firstName: String) {
+        guard let uid = user?.uid else { return }
+
+        db.collection("users").document(uid).setData(["firstName": firstName], merge: true) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.errorMessage = "First Name Save Failed: \(error.localizedDescription)"
+                    return
+                }
+                self.firstName = firstName
+            }
+        }
+    }
+    
+    func setLastName(_ lastName: String) {
+        guard let uid = user?.uid else { return }
+
+        db.collection("users").document(uid).setData(["lastName": lastName], merge: true) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.errorMessage = "Last Name Save Failed: \(error.localizedDescription)"
+                    return
+                }
+                self.lastName = lastName
+            }
+        }
+    }
+    
     func fetchUserProfile(for uid: String) {
         withAnimation {
             isLoading = true
@@ -255,6 +283,7 @@ class AuthViewModel: NSObject, ObservableObject {
                         datePackaged: timestamp.dateValue(),
                         notes: data["notes"] as? String,
                         price: data["price"] as? Double,
+                        unit: data["unit"] as? String,
                         expireDate: (data["expireDate"] as? Timestamp)?.dateValue(),
                         quantity: data["quantity"] as? Int
                     )

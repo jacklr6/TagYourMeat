@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct TaggedMeatDetails: View {
     @EnvironmentObject var auth: AuthViewModel
@@ -13,6 +14,8 @@ struct TaggedMeatDetails: View {
 
     @State var tag: MeatTag
     @State private var showPricePicker: Bool = false
+    @AppStorage("alertSuccessfullyUpdated") private var alertSuccessfullyUpdated: Bool = false
+    @AppStorage("alertSuccessfullyUpdatedSF") private var alertSuccessfullyUpdatedSF: Bool = false
     
     var body: some View {
         ZStack {
@@ -31,6 +34,7 @@ struct TaggedMeatDetails: View {
                             .contentTransition(.numericText())
                         Spacer()
                         Text("/\(tag.unit ?? "unit")")
+                            .contentTransition(.numericText())
                     }
                     .onTapGesture { showPricePicker = true }
                     HStack {
@@ -46,10 +50,26 @@ struct TaggedMeatDetails: View {
                         .lineLimit(4, reservesSpace: true)
                 }
                 .animation(.default, value: tag.price)
+                .animation(.default, value: tag.unit)
                 
                 Button(action: {
                     auth.updateMeatTag(tag) { success in
-                        if success { dismiss() }
+                        if success {
+                            dismiss()
+                            withAnimation {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    alertSuccessfullyUpdated = true
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                                    alertSuccessfullyUpdatedSF = true
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                    alertSuccessfullyUpdated = false
+                                    alertSuccessfullyUpdatedSF = false
+                                }
+                            }
+                        }
                     }
                 }) {
                     HStack {
@@ -62,66 +82,161 @@ struct TaggedMeatDetails: View {
                         }
                     }
                     .fontWeight(.semibold)
+                    .animation(.default, value: auth.isLoading)
                 }
             }
             .navigationTitle("Edit Meat Tag")
             .sheet(isPresented: $showPricePicker) {
                 PricePickerView(price: Binding($tag.price, replacingNilWith: 0.0), unit: Binding($tag.unit, replacingNilWith: "unit"))
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.height(500), .large])
             }
         }
     }
 }
 
 struct PricePickerView: View {
+    @Environment(\.dismiss) var dismiss
     @Binding var price: Double
     @Binding var unit: String
+    @State private var priceString: String = ""
     @State private var unitPickerSelection: String = "unit"
+    @State private var keyboardIsShowing: Bool = false
     
     var unitOptions: [String] = ["unit", "lb", "oz", "kg"]
     
     var body: some View {
         VStack {
             HStack {
-                TextField("Price", value: Binding($price), format: .currency(code: "USD"))
+                Text("$\(priceString.isEmpty ? "0.00" : priceString)")
                     .font(.system(size: 75, weight: .bold, design: .rounded))
-                    .padding(.top, 50)
-                    .multilineTextAlignment(.center)
-                    .keyboardType(.decimalPad)
-                    .mask(
+                    .fixedSize()
+                    .frame(width: UIScreen.main.bounds.width - 130, height: 100)
+                    .mask (
                         HStack(spacing: 0) {
                             LinearGradient(gradient: Gradient(colors: [.clear, .black]), startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 50)
-
+                                .frame(width: 45)
+                            
                             Rectangle()
                                 .fill(Color.black)
-
+                            
                             LinearGradient(gradient: Gradient(colors: [.black, .clear]), startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 50)
+                                .frame(width: 45)
                         }
                     )
-                Text("/\(unitPickerSelection)")
-                    .font(.system(size: 24, weight: .medium, design: .rounded))
-                    .offset(y: 40)
-                    .padding(.horizontal, 15)
-                    .onChange(of: unitPickerSelection) { _, newValue in
-                        unit = newValue
-                    }
-            }
-            Divider()
-                .frame(width: UIScreen.main.bounds.width * 0.85)
-            HStack {
-                Spacer()
+                
                 Picker("", selection: $unitPickerSelection) {
                     ForEach(unitOptions, id: \.self) { option in
                         Text(option).tag(option)
                     }
                 }
                 .pickerStyle(.wheel)
-                .frame(width: 120, height: 150)
-                .padding(.horizontal, 15)
+                .frame(width: 100, height: 150)
+                .onChange(of: unitPickerSelection) { _, newValue in
+                    withAnimation {
+                        unit = newValue
+                    }
+                }
+                .onChange(of: priceString) { _, newValue in
+                    if let newPrice = Double(newValue) {
+                        price = newPrice
+                    } else if newValue.isEmpty {
+                        price = 0.00
+                    }
+                }
+                .onAppear {
+                    unitPickerSelection = unit
+                    if price.truncatingRemainder(dividingBy: 1) == 0 {
+                        priceString = String(format: "%.0f", price)
+                    } else {
+                        priceString = String(price)
+                    }
+                    if price == 0.00 && priceString == "0" {
+                        priceString = ""
+                    }
+                }
             }
-            Spacer()
+            
+            NumpadView(value: $priceString) { buttonText in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+            .padding(.horizontal)
+            .padding(.top, -30)
+            
+            Button(action: {
+                dismiss()
+            }) {
+                Text("Confirm Price")
+                    .frame(maxWidth: .infinity, maxHeight: 60)
+            }
+            .buttonStyle(.borderedProminent)
+            .cornerRadius(15)
+            .padding(.horizontal, 32)
+            .fontWeight(.medium)
+        }
+    }
+}
+
+struct NumpadView: View {
+    @Binding var value: String
+    
+    var onButtonTap: ((String) -> Void)?
+    
+    let buttons: [[String]] = [
+        ["1", "2", "3"],
+        ["4", "5", "6"],
+        ["7", "8", "9"],
+        [".", "0", "⌫"]
+    ]
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(buttons, id: \.self) { row in
+                HStack(spacing: 10) {
+                    ForEach(row, id: \.self) { buttonText in
+                        Button(action: {
+                            handleButtonTap(buttonText)
+                            onButtonTap?(buttonText)
+                        }) {
+                            Text(buttonText)
+                                .font(.largeTitle)
+                                .fontWeight(.medium)
+                                .frame(maxWidth: .infinity, minHeight: 60)
+                                .background(Color.gray.opacity(0.2))
+                                .foregroundColor(.primary)
+                                .cornerRadius(15)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+    }
+    
+    private func handleButtonTap(_ buttonText: String) {
+        switch buttonText {
+        case "⌫":
+            if !value.isEmpty {
+                value.removeLast()
+            }
+        case ".":
+            if !value.contains(".") {
+                if value.isEmpty {
+                    value = "0."
+                } else {
+                    value += "."
+                }
+            }
+        case "0":
+            if value == "0" && !value.contains(".") {
+            } else {
+                value += buttonText
+            }
+        default:
+            if value == "0" && !value.contains(".") {
+                value = buttonText
+            } else {
+                value += buttonText
+            }
         }
     }
 }

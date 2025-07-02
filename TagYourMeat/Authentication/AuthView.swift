@@ -35,72 +35,92 @@ struct AuthView: View {
                 
                 VStack(spacing: 16) {
                     if auth.isAuthenticated {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(.ultraThinMaterial)
-                                .frame(width: UIScreen.main.bounds.width * 0.75, height: 300)
-                            
-                            VStack {
-                                if auth.isLoading {
-                                    ProgressView()
-                                } else {
-                                    VStack {
-                                        Text("Name:")
+                        VStack {
+                            if auth.isLoading {
+                                ProgressView()
+                            } else {
+                                VStack {
+                                    Text("TagYourMeat")
+                                        .font(.largeTitle)
+                                        .fontWeight(.bold)
+                                        .shadow(radius: 5, x: 0, y: 10)
+                                }
+                                
+                                VStack {
+                                    Text("Name:")
+                                        .fontWeight(.semibold)
+                                    TextField("", text: $auth.firstName, prompt: Text("First Name").foregroundColor(.gray))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(Color.white)
+                                        .foregroundStyle(Color.black)
+                                        .cornerRadius(5)
+                                        .onChange(of: auth.firstName) { _, name in
+                                            auth.setFirstName(name)
+                                        }
+                                    TextField("", text: $auth.lastName, prompt: Text("Last Name").foregroundColor(.gray))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(Color.white)
+                                        .foregroundStyle(Color.black)
+                                        .cornerRadius(5)
+                                        .onChange(of: auth.lastName) { _, name in
+                                            auth.setLastName(name)
+                                        }
+                                }
+                                .frame(width: UIScreen.main.bounds.width * 0.55)
+                                .padding(.bottom, 10)
+                                
+                                VStack {
+                                    Text("Email:")
+                                        .fontWeight(.semibold)
+                                    Text("\(auth.user?.email ?? "User")")
+                                }
+                                .padding(.bottom, 10)
+                                
+                                VStack {
+                                    HStack {
+                                        Text("App Role:")
                                             .fontWeight(.semibold)
-                                        TextField("First Name", text: $auth.firstName)
-                                            .frame(width: 225)
-                                            .textFieldStyle(.roundedBorder)
-                                        TextField("Last Name", text: $auth.lastName)
-                                            .frame(width: 225)
-                                            .textFieldStyle(.roundedBorder)
-                                    }
-                                    .padding(.bottom, 10)
-                                    
-                                    VStack {
-                                        Text("Email:")
-                                            .fontWeight(.semibold)
-                                        Text("\(auth.user?.email ?? "User")")
-                                    }
-                                    .padding(.bottom, 10)
-                                    
-                                    VStack {
-                                        HStack {
-                                            Text("App Role:")
-                                                .fontWeight(.semibold)
-                                            Image(systemName: "info.circle")
-                                                .onTapGesture {
-                                                    showAppRoleAlert = true
-                                                }
-                                        }
-                                        .padding(.bottom, -12)
-                                        Picker("Role", selection: $auth.role) {
-                                            ForEach(roleOptions, id: \.self) { role in
-                                                Text(role).tag(role)
+                                        Image(systemName: "info.circle")
+                                            .onTapGesture {
+                                                showAppRoleAlert = true
                                             }
+                                    }
+                                    .padding(.bottom, -12)
+                                    Picker("Role", selection: $auth.role) {
+                                        ForEach(roleOptions, id: \.self) { role in
+                                            Text(role).tag(role)
                                         }
-                                        .onAppear {
-                                            if auth.role == nil {
-                                                auth.role = "User"
-                                            }
+                                    }
+                                    .tint(.primary)
+                                    .onAppear {
+                                        if auth.role == nil {
+                                            auth.role = "User"
                                         }
-                                        .pickerStyle(.automatic)
-                                        .onChange(of: auth.role) { _, newRole in
+                                    }
+                                    .onChange(of: auth.role) { _, newRole in
+                                        withAnimation {
                                             if let newRole = newRole {
                                                 auth.setRole(newRole)
                                             }
                                         }
-                                        .tint(.black)
                                     }
+                                    .tint(.black)
                                 }
                             }
-                            .animation(.easeInOut, value: auth.isLoading)
-                            .padding()
-                            .toolbar {
-                                ToolbarItem(placement: .topBarLeading) {
-                                    Button("Sign Out") {
-                                        auth.signOut()
-                                        dismiss()
-                                    }
+                        }
+                        .animation(.easeInOut, value: auth.isLoading)
+                        .padding(.vertical, 30)
+                        .padding(.horizontal, 30)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(20)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Sign Out") {
+                                    auth.signOut()
+                                    dismiss()
+                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                                 }
                             }
                         }
@@ -110,20 +130,22 @@ struct AuthView: View {
                                 Group {
                                     if isSignUp {
                                         Group {
-                                            TextField("First Name", text: $firstName)
-                                            TextField("Last Name", text: $lastName)
+                                            TextField("First Name", text: $firstName, prompt: Text("First Name").foregroundColor(.gray))
+                                            TextField("Last Name", text: $lastName, prompt: Text("Last Name").foregroundColor(.gray))
                                         }
-                                        .textFieldStyle(.roundedBorder)
                                         .transition(.move(edge: .top).combined(with: .opacity))
                                     }
                                     
-                                    TextField("Email", text: $email)
-                                        .textFieldStyle(.roundedBorder)
+                                    TextField("", text: $email, prompt: Text("Email").foregroundColor(.gray))
                                         .autocapitalization(.none)
                                     
-                                    SecureField("Password", text: $password)
-                                        .textFieldStyle(.roundedBorder)
+                                    SecureField("Password", text: $password, prompt: Text("Password").foregroundColor(.gray))
                                 }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.white)
+                                .foregroundStyle(Color.black)
+                                .cornerRadius(5)
                                 
                                 if let error = auth.errorMessage {
                                     Text(error)
@@ -143,6 +165,7 @@ struct AuthView: View {
                                                 } else {
                                                     auth.signUp(email: email, password: password, firstName: firstName, lastName: lastName) {
                                                         auth.errorMessage = nil
+                                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                                                     }
                                                 }
                                             }
@@ -164,6 +187,7 @@ struct AuthView: View {
                                             withAnimation {
                                                 auth.signIn(email: email, password: password) {
                                                     auth.errorMessage = nil
+                                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                                                     dismiss()
                                                 }
                                             }
@@ -235,14 +259,14 @@ struct AuthView: View {
                                         isSignUp.toggle()
                                     }
                                 }
+                                .foregroundColor(colorScheme == .dark ? .white : .blue)
                             }
                             .frame(width: 230)
                             .animation(.easeInOut, value: isSignUp)
                         }
-                        .padding(40)
-                        .background(
-                            Color.white.opacity(0.275)
-                        )
+                        .padding(.vertical, 30)
+                        .padding(.horizontal, 30)
+                        .background(.ultraThinMaterial)
                         .cornerRadius(20)
                     }
                 }

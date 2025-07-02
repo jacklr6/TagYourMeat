@@ -19,6 +19,9 @@ struct TagYourMeatMain: View {
     @State private var searchText = ""
     @State private var wifiImageSwitcher: Bool = false
     @AppStorage("appOpenCount") private var appOpenCount: Int = 0
+    @AppStorage("alertSuccessfullyUpdated") private var alertSuccessfullyUpdated: Bool = false
+    @AppStorage("alertSuccessfullyUpdatedSF") private var alertSuccessfullyUpdatedSF: Bool = false
+    @State private var firstLoginAlert: Bool = true
     
     var filteredTags: [MeatTag] {
         withAnimation {
@@ -182,6 +185,55 @@ struct TagYourMeatMain: View {
                 }
             }
         }
+        .overlay {
+            if alertSuccessfullyUpdated {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .frame(width: 320, height: 200)
+                        .foregroundStyle(.ultraThinMaterial)
+                    
+                    VStack {
+                        Image(systemName: alertSuccessfullyUpdatedSF ? "checkmark" : "arrow.up.circle")
+                            .contentTransition(.symbolEffect)
+                            .font(.system(size: 90))
+                        Text("Tag Successfully Updated!")
+                            .font(.system(size: 24))
+                            .padding(.top, 10)
+                    }
+                }
+                .transition(.scale.combined(with: .opacity))
+            } else if appOpenCount <= 1 && auth.isAuthenticated && firstLoginAlert {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .frame(width: 320, height: 200)
+                        .foregroundStyle(.ultraThinMaterial)
+                    
+                    VStack {
+                        Image(systemName: "hand.wave")
+                            .font(.system(size: 90))
+                            .padding(.bottom, 1)
+                            .foregroundStyle(
+                                MeshGradient(width: 2, height: 2, points: [
+                                    [0, 0], [1, 0],
+                                    [0, 1], [1, 1]
+                                ], colors: [
+                                    .indigo, .cyan,
+                                    .purple, .pink
+                                ])
+                            )
+                            .symbolEffect(.wiggle, options: .nonRepeating)
+                        Text("Welcome to \(Text("TagYourMeat!").bold())")
+                            .font(.system(size: 24))
+                        Text("(Tap to Dismiss)")
+                            .font(.system(size: 15))
+                    }
+                }
+                .onTapGesture {
+                    withAnimation { firstLoginAlert = false }
+                }
+            }
+        }
+        .animation(.easeInOut, value: alertSuccessfullyUpdated)
         .sheet(isPresented: $moveToAuthView) {
             AuthView()
                 .environmentObject(auth)
