@@ -334,6 +334,55 @@ class AuthViewModel: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Sign In With Google
+    func handleGoogleSignIn() {
+        guard let rootViewController = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow })?
+                .rootViewController else {
+            print("❌ Failed to get root view controller.")
+            return
+        }
+
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            print("❌ Missing Firebase client ID.")
+            return
+        }
+
+        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = config
+        
+        isLoading = true
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
+            if let error = error {
+                self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+                return
+            }
+
+            guard
+                let user = result?.user,
+                let idToken = user.idToken?.tokenString,
+                let accessToken = Optional(user.accessToken.tokenString)
+            else {
+                print("❌ Missing Google tokens.")
+                return
+            }
+
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
+            
+            Auth.auth().signIn(with: credential) { authResult, error in
+                if let error = error {
+                    self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+                    return
+                }
+                
+                self.isLoading = false
+                self.isAuthenticated = true
+            }
+        }
+    }
+    
     // MARK: - Sign In With Apple
     private func randomNonceString(length: Int = 32) -> String {
         let charset: [Character] =

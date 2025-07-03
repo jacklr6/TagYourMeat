@@ -16,6 +16,7 @@ struct AuthView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject private var auth: AuthViewModel
+    @AppStorage("appGradients") private var appGradients: Bool = true
     
     @State private var email = ""
     @State private var password = ""
@@ -29,9 +30,11 @@ struct AuthView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Rectangle()
-                    .fill(LinearGradient(gradient: Gradient(colors: [isSignUp ? .orange : .yellow, isSignUp ? .teal : .blue]), startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .ignoresSafeArea(edges: .all)
+                if appGradients {
+                    Rectangle()
+                        .fill(LinearGradient(gradient: Gradient(colors: [isSignUp ? .orange : .yellow, isSignUp ? .teal : .blue]), startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .ignoresSafeArea(edges: .all)
+                }
                 
                 VStack(spacing: 16) {
                     if auth.isAuthenticated {
@@ -113,7 +116,7 @@ struct AuthView: View {
                         .animation(.easeInOut, value: auth.isLoading)
                         .padding(.vertical, 30)
                         .padding(.horizontal, 30)
-                        .background(.ultraThinMaterial)
+                        .background(appGradients ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.gray.opacity(0.4)))
                         .cornerRadius(20)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
@@ -221,7 +224,7 @@ struct AuthView: View {
                                     Group {
                                         if isSignUp {
                                             Button(action: {
-                                                handleGoogleSignIn()
+                                                auth.handleGoogleSignIn()
                                             }) {
                                                 HStack {
                                                     Image("Google-Logo")
@@ -233,7 +236,7 @@ struct AuthView: View {
                                             }
                                         } else {
                                             Button(action: {
-                                                handleGoogleSignIn()
+                                                auth.handleGoogleSignIn()
                                             }) {
                                                 HStack {
                                                     Image("Google-Logo")
@@ -266,7 +269,7 @@ struct AuthView: View {
                         }
                         .padding(.vertical, 30)
                         .padding(.horizontal, 30)
-                        .background(.ultraThinMaterial)
+                        .background(appGradients ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.gray.opacity(0.4)))
                         .cornerRadius(20)
                     }
                 }
@@ -295,52 +298,6 @@ struct AuthView: View {
             Button("OK", role: .cancel) { showAppRoleAlert = false }
         } message: {
             Text("Choose your app interface based on your needs. The USER interface allows you to scan in tags already scanned by your butcher. The BUTCHER interface allows you to write information to an NFC tag for the consumer.")
-        }
-    }
-    
-    private func handleGoogleSignIn() {
-        guard let rootViewController = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .flatMap({ $0.windows })
-                .first(where: { $0.isKeyWindow })?
-                .rootViewController else {
-            print("❌ Failed to get root view controller.")
-            return
-        }
-
-        guard let clientID = FirebaseApp.app()?.options.clientID else {
-            print("❌ Missing Firebase client ID.")
-            return
-        }
-
-        let config = GIDConfiguration(clientID: clientID)
-        GIDSignIn.sharedInstance.configuration = config
-
-        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
-            if let error = error {
-                print("❌ Google Sign-In failed: \(error.localizedDescription)")
-                return
-            }
-
-            guard
-                let user = result?.user,
-                let idToken = user.idToken?.tokenString,
-                let accessToken = Optional(user.accessToken.tokenString)
-            else {
-                print("❌ Missing Google tokens.")
-                return
-            }
-
-            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
-
-            Auth.auth().signIn(with: credential) { authResult, error in
-                if let error = error {
-                    print("❌ Firebase Sign-In with Google failed: \(error.localizedDescription)")
-                    return
-                }
-
-                print("✅ User signed in with Google: \(authResult?.user.uid ?? "")")
-            }
         }
     }
 }

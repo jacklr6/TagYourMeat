@@ -21,6 +21,8 @@ struct TagYourMeatMain: View {
     @AppStorage("appOpenCount") private var appOpenCount: Int = 0
     @AppStorage("alertSuccessfullyUpdated") private var alertSuccessfullyUpdated: Bool = false
     @AppStorage("alertSuccessfullyUpdatedSF") private var alertSuccessfullyUpdatedSF: Bool = false
+    @AppStorage("alertSuccessfullyAdded") private var alertSuccessfullyAdded: Bool = false
+    @AppStorage("alertSuccessfullyAddedSF") private var alertSuccessfullyAddedSF: Bool = false
     @State private var firstLoginAlert: Bool = true
     
     var filteredTags: [MeatTag] {
@@ -75,8 +77,17 @@ struct TagYourMeatMain: View {
                                             VStack(alignment: .leading) {
                                                 Text(tag.itemName)
                                                     .font(.system(size: 22, weight: .semibold))
-                                                Text("Location: \(tag.packagedLocation)")
-                                                    .font(.subheadline)
+                                                if tag.packagedLocation.hasPrefix("Lat: ") {
+                                                    let coords = parseCoordinates(from: tag.packagedLocation)
+                                                    let lat = Double(round(10000 * coords.lat) / 10000)
+                                                    let lon = Double(round(10000 * coords.lon) / 10000)
+                                                    
+                                                    Text("Location: Lat: \(lat, specifier: "%.4f"), Lon: \(lon, specifier: "%.4f")")
+                                                        .font(.subheadline)
+                                                } else {
+                                                    Text("Location: \(tag.packagedLocation)")
+                                                        .font(.subheadline)
+                                                }
                                                 Text("Date: \(tag.datePackaged.formatted(.dateTime.month().day().year().hour().minute()))")
                                                     .font(.caption)
                                                     .foregroundColor(.gray)
@@ -186,23 +197,37 @@ struct TagYourMeatMain: View {
             }
         }
         .overlay {
-            if alertSuccessfullyUpdated {
+            if alertSuccessfullyUpdated || alertSuccessfullyAdded {
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
                         .frame(width: 320, height: 200)
                         .foregroundStyle(.ultraThinMaterial)
                     
                     VStack {
-                        Image(systemName: alertSuccessfullyUpdatedSF ? "checkmark" : "arrow.up.circle")
-                            .contentTransition(.symbolEffect)
-                            .font(.system(size: 90))
-                        Text("Tag Successfully Updated!")
-                            .font(.system(size: 24))
-                            .padding(.top, 10)
+                        if alertSuccessfullyAdded {
+                            Image(systemName: alertSuccessfullyAddedSF ? "checkmark" : "arrow.up.circle")
+                                .contentTransition(.symbolEffect)
+                                .frame(width: 90, height: 90)
+                                .font(.system(size: 90))
+                            Text("Tag Successfully Added!")
+                                .font(.system(size: 24))
+                                .padding(.top, 10)
+                            
+                        } else {
+                            Image(systemName: alertSuccessfullyUpdatedSF ? "checkmark" : "document.badge.arrow.up")
+                                .contentTransition(.symbolEffect)
+                                .frame(width: 90, height: 90)
+                                .font(.system(size: 90))
+                            Text("Tag Successfully Updated!")
+                                .font(.system(size: 24))
+                                .padding(.top, 10)
+                        }
                     }
                 }
                 .transition(.scale.combined(with: .opacity))
-            } else if appOpenCount <= 1 && auth.isAuthenticated && firstLoginAlert {
+            }
+            
+            if appOpenCount <= 1 && auth.isAuthenticated && firstLoginAlert {
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
                         .frame(width: 320, height: 200)
@@ -233,11 +258,34 @@ struct TagYourMeatMain: View {
                 }
             }
         }
+        .animation(.easeInOut, value: alertSuccessfullyAdded)
         .animation(.easeInOut, value: alertSuccessfullyUpdated)
         .sheet(isPresented: $moveToAuthView) {
             AuthView()
                 .environmentObject(auth)
         }
+    }
+    
+    func parseCoordinates(from string: String) -> (lat: Double, lon: Double) {
+        var lat: Double = 0.0
+        var lon: Double = 0.0
+        
+        let parts = string.components(separatedBy: ",")
+        
+        for part in parts {
+            let trimmed = part.trimmingCharacters(in: .whitespaces)
+            
+            if trimmed.hasPrefix("Lat:") {
+                let valueString = trimmed.replacingOccurrences(of: "Lat:", with: "")
+                lat = Double(valueString.trimmingCharacters(in: .whitespaces)) ?? 0.0
+            } else if trimmed.hasPrefix("Lon:") {
+                let valueString = trimmed.replacingOccurrences(of: "Lon:", with: "")
+                lon = Double(valueString.trimmingCharacters(in: .whitespaces)) ?? 0.0
+            }
+        }
+        print("Lat: \(lat), Lon: \(lon)")
+        
+        return (lat, lon)
     }
 }
 

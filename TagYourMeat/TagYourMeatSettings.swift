@@ -12,6 +12,9 @@ import TipKit
 struct TagYourMeatSettings: View {
     @State private var checkOSVersion: String = ""
     @State private var isTestFlight: Bool = false
+    @AppStorage("savedLocation") private var savedLocation: String = ""
+    @State private var showLocationAlert: Bool = false
+    @AppStorage("appGradients") private var appGradients: Bool = true
     
     var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -21,7 +24,19 @@ struct TagYourMeatSettings: View {
         NavigationStack {
             Form {
                 Section(header: Text("Settings")) {
-                    Text("Coming soon!")
+                    HStack {
+                        Text("Saved Location:")
+                        TextField("e.g. Big Cow Farms", text: $savedLocation)
+                        Image(systemName: "info.circle")
+                            .onTapGesture {
+                                showLocationAlert = true
+                            }
+                    }
+                    
+                    HStack {
+                        Image(systemName: "paintbrush.pointed")
+                        Toggle("App Gradients", isOn: $appGradients)
+                    }
                 }
                 
                 if !isTestFlight {
@@ -64,6 +79,11 @@ struct TagYourMeatSettings: View {
             .task {
                 isTestFlight = await isTestFlightBuild()
             }
+        }
+        .alert("Saved Locations", isPresented: $showLocationAlert) {
+            Button("OK", role: .cancel) { showLocationAlert = false }
+        } message: {
+            Text("This phrase can be used to quickly fill in a location of a tag's package location before scanning.")
         }
     }
     

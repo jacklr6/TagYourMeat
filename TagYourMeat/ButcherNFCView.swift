@@ -38,13 +38,21 @@ struct ButcherNFCView: View {
     @State private var navigateToConfirmView = false
     @State private var path: NavigationPath = NavigationPath()
     @State private var generatedTagID: String = UUID().uuidString
+    @State private var saveFailedAlert: Bool = false
+    @AppStorage("savedLocation") private var savedLocation: String = ""
+    @AppStorage("appGradients") private var appGradients: Bool = true
+    @AppStorage("alertSuccessfullyAdded") private var alertSuccessfullyAdded: Bool = false
+    @AppStorage("alertSuccessfullyAddedSF") private var alertSuccessfullyAddedSF: Bool = false
+    @FocusState private var isLocationFocused: Bool
     
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
-                Rectangle()
-                    .fill(LinearGradient(gradient: Gradient(colors: [Color.red, Color.red.opacity(0.1)]), startPoint: .bottom, endPoint: .top))
-                    .ignoresSafeArea(edges: .all)
+                if appGradients {
+                    Rectangle()
+                        .fill(LinearGradient(gradient: Gradient(colors: [Color.red, Color.red.opacity(0.1)]), startPoint: .bottom, endPoint: .top))
+                        .ignoresSafeArea(edges: .all)
+                }
                 
                 VStack(spacing: 20) {
                     if !showTextTip.isEmpty {
@@ -69,6 +77,7 @@ struct ButcherNFCView: View {
                                 .background(Color.white)
                                 .foregroundStyle(Color.black)
                                 .cornerRadius(5)
+                                .focused($isLocationFocused)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                                 .disabled(reenableTextField == 1 ? false : showStartWrite == 1)
                             
@@ -78,7 +87,7 @@ struct ButcherNFCView: View {
                                     checkedLocation = true
                                 }
                                 if let coordinate = locationManager.lastKnownLocation {
-                                    packagedLocation = "Lat: \(coordinate.latitude.formatted(.number.precision(.fractionLength(4)))), Lon: \(coordinate.longitude.formatted(.number.precision(.fractionLength(4))))"
+                                    packagedLocation = "Lat: \(coordinate.latitude), Lon: \(coordinate.longitude)"
                                 }
                                 if locationManager.locationErrorMessage != nil {
                                     showingLocationAlert = true
@@ -99,6 +108,8 @@ struct ButcherNFCView: View {
                             Button("Back") {
                                 withAnimation {
                                     showPackagingLocation = 0
+                                    packagedLocation = ""
+                                    showTextTip = "Please Enter a Valid Item Name."
                                 }
                             }
                             .buttonStyle(.bordered)
@@ -117,7 +128,8 @@ struct ButcherNFCView: View {
                             
                             if showPackagingLocation == 1 {
                                 if !packagedLocation.isEmpty {
-                                    startNFCWrite()
+//                                    startNFCWrite()
+                                    path.append(NFCNavigationItem(route: .confirmation(itemName: itemName, packagedLocation: packagedLocation, tagID: generatedTagID)))
                                     withAnimation {
                                         showStartWrite = 1
                                     }
@@ -131,7 +143,39 @@ struct ButcherNFCView: View {
                         .buttonStyle(.borderedProminent)
                         .onChange(of: packagedLocation) { _, newValue in
                             withAnimation {
-                                buttonText = newValue.isEmpty ? "Next Step" : "Scan NFC Tag"
+                                if newValue.isEmpty {
+                                    buttonText = "Next Step"
+                                } else {
+                                    buttonText = "Scan NFC Tag"
+                                }
+                            }
+                        }
+                        
+                        if showPackagingLocation == 1 {
+                            if !packagedLocation.isEmpty {
+                                Button("Cloud Save") {
+                                    withAnimation {
+                                        auth.addMeatTag(itemName: itemName, packagedLocation: packagedLocation, tagID: generatedTagID) { success in
+                                            if success {
+                                                dismissButcherNFCView()
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                                    alertSuccessfullyAdded = true
+                                                }
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                                                    alertSuccessfullyAddedSF = true
+                                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                                }
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                                    alertSuccessfullyAdded = false
+                                                    alertSuccessfullyAddedSF = false
+                                                }
+                                            } else {
+                                                saveFailedAlert = true
+                                            }
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
                             }
                         }
                     }
@@ -139,13 +183,8 @@ struct ButcherNFCView: View {
                 .padding(.vertical, 40)
                 .padding(.horizontal, 20)
                 .frame(width: 360)
-                .background(.ultraThinMaterial)
+                .background(appGradients ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.gray.opacity(0.4)))
                 .cornerRadius(20)
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        Text("\(auth.role ?? "")")
-                    }
-                }
                 .alert("NFC Write", isPresented: $showingNFCAlert) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -158,11 +197,27 @@ struct ButcherNFCView: View {
                         Text(errorMessage)
                     }
                 }
+                .alert("Save Failed", isPresented: $saveFailedAlert) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text("Failed to save and sync with Firebase. Please try again later or when better connection is available.")
+                }
             }
             .navigationTitle(Text("Write NFC Tags"))
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(auth.role ?? "")
+                }
+                ToolbarItem(placement: .keyboard) {
+                    if isLocationFocused {
+                        Button(action: {
+                            packagedLocation.append(contentsOf: savedLocation)
+                        }) {
+                            if !savedLocation.isEmpty {
+                                Text(savedLocation)
+                            }
+                        }
+                    }
                 }
             }
             .navigationDestination(for: NFCNavigationItem.self) { navItem in
@@ -218,12 +273,15 @@ struct ButcherNFCConfirmation: View {
     @State private var dynamicColor: Color = .red
     @State private var saveFailedAlert: Bool = false
     @State private var infoAlert: Bool = false
+    @AppStorage("appGradients") private var appGradients: Bool = true
     
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(LinearGradient(gradient: Gradient(colors: [dynamicColor, dynamicColor.opacity(0.1)]), startPoint: .bottom, endPoint: .top))
-                .ignoresSafeArea(edges: .all)
+            if appGradients {
+                Rectangle()
+                    .fill(LinearGradient(gradient: Gradient(colors: [dynamicColor, dynamicColor.opacity(0.1)]), startPoint: .bottom, endPoint: .top))
+                    .ignoresSafeArea(edges: .all)
+            }
             
             VStack {
                 Text("What would you like to do with this newly tagged meat?")
@@ -236,6 +294,7 @@ struct ButcherNFCConfirmation: View {
                 
                 Text("\(Text(itemName).fontWeight(.semibold)) was packaged in \(Text(packagedLocation).fontWeight(.semibold))")
                     .font(.subheadline)
+                    .multilineTextAlignment(.center)
                 
                 Divider()
                     .frame(width: 280)
@@ -271,11 +330,16 @@ struct ButcherNFCConfirmation: View {
                     }
                     .buttonStyle(.bordered)
                 }
+                
+                Text(tagID)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.top, 5)
             }
             .padding(.vertical, 40)
             .padding(.horizontal, 20)
             .frame(width: 360)
-            .background(Color.white.opacity(0.275))
+            .background(appGradients ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.gray.opacity(0.4)))
             .cornerRadius(20)
         }
         .navigationTitle(Text("Next Steps"))
@@ -301,7 +365,7 @@ struct ButcherNFCConfirmation: View {
         .alert("Save Failed", isPresented: $saveFailedAlert) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Failed to save and sync with Firebase. Please try again later or when better connection is available.")
+            Text("Failed to save and sync with the Cloud. Please try again later or when better connection is available.")
         }
         .alert("Info", isPresented: $infoAlert) {
             Button("OK", role: .cancel) {}

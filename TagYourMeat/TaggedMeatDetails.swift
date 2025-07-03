@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import MapKit
 
 struct TaggedMeatDetails: View {
     @EnvironmentObject var auth: AuthViewModel
@@ -17,12 +18,35 @@ struct TaggedMeatDetails: View {
     @AppStorage("alertSuccessfullyUpdated") private var alertSuccessfullyUpdated: Bool = false
     @AppStorage("alertSuccessfullyUpdatedSF") private var alertSuccessfullyUpdatedSF: Bool = false
     
+    @State private var cameraPosition = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 0, longitude: 0), span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)))
+    
+    var coordinate: CLLocationCoordinate2D? {
+        if tag.packagedLocation.hasPrefix("Lat: ") {
+            let coords = parseCoordinates(from: tag.packagedLocation)
+            return CLLocationCoordinate2D(latitude: coords.lat, longitude: coords.lon)
+        } else {
+            return nil
+        }
+    }
+    
     var body: some View {
         ZStack {
             Form {
                 Section(header: Text("Basic Info")) {
                     TextField("Item Name", text: $tag.itemName)
                     TextField("Location", text: $tag.packagedLocation)
+                    if let coordinate = coordinate {
+                        Map(position: $cameraPosition) { Marker("Packaged Location", coordinate: coordinate) }
+                        .frame(height: 150)
+                        .cornerRadius(10)
+                        .onAppear {
+                            cameraPosition = .region(
+                                MKCoordinateRegion(center: coordinate,
+                                                   span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2))
+                            )
+                        }
+                        .disabled(true)
+                    }
                     DatePicker("Packaged Date", selection: .constant(tag.datePackaged), displayedComponents: .date)
                         .disabled(true)
                 }
@@ -91,6 +115,28 @@ struct TaggedMeatDetails: View {
                     .presentationDetents([.height(500), .large])
             }
         }
+    }
+    
+    func parseCoordinates(from string: String) -> (lat: Double, lon: Double) {
+        var lat: Double = 0.0
+        var lon: Double = 0.0
+        
+        let parts = string.components(separatedBy: ",")
+        
+        for part in parts {
+            let trimmed = part.trimmingCharacters(in: .whitespaces)
+            
+            if trimmed.hasPrefix("Lat:") {
+                let valueString = trimmed.replacingOccurrences(of: "Lat:", with: "")
+                lat = Double(valueString.trimmingCharacters(in: .whitespaces)) ?? 0.0
+            } else if trimmed.hasPrefix("Lon:") {
+                let valueString = trimmed.replacingOccurrences(of: "Lon:", with: "")
+                lon = Double(valueString.trimmingCharacters(in: .whitespaces)) ?? 0.0
+            }
+        }
+        print("Lat: \(lat), Lon: \(lon)")
+        
+        return (lat, lon)
     }
 }
 
@@ -253,6 +299,6 @@ extension Binding {
 }
 
 #Preview {
-    TaggedMeatDetails(tag: MeatTag(id: "sample-tag-id", itemName: "Ribeye Steak", packagedLocation: "Freezer A", datePackaged: Date()))
+    TaggedMeatDetails(tag: MeatTag(id: "sample-tag-id", itemName: "Ribeye Steak", packagedLocation: "Lat: 37.3347302, Lon: -122.0089189", datePackaged: Date()))
         .environmentObject(AuthViewModel())
 }
