@@ -77,7 +77,7 @@ struct AuthView: View {
                                 VStack {
                                     Text("Email:")
                                         .fontWeight(.semibold)
-                                    Text("\(auth.user?.email ?? "User")")
+                                    Text("\(auth.email)")
                                 }
                                 .padding(.bottom, 10)
                                 

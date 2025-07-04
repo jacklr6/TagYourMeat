@@ -34,10 +34,12 @@ class AuthViewModel: NSObject, ObservableObject {
     @Published var isAuthenticated = false
     @Published var errorMessage: String?
     @Published var role: String? = "User"
+    @Published var email: String = ""
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var isLoading = false
     @Published var isFetching = false
+    @Published var isTransfering = false
     @Published var MeatTags: [MeatTag] = []
 
     private let db = Firestore.firestore()
@@ -93,6 +95,7 @@ class AuthViewModel: NSObject, ObservableObject {
                     self.isAuthenticated = true
                     self.role = "User"
                     self.setRole("User")
+                    self.email = email
                     self.fetchUserProfile(for: user.uid)
                     self.isLoading = false
                     completion()
@@ -112,6 +115,7 @@ class AuthViewModel: NSObject, ObservableObject {
                 }
 
                 self.user = result?.user
+                self.email = email
                 self.fetchUserProfile(for: result?.user.uid ?? "")
                 self.isAuthenticated = true
                 self.isLoading = false
@@ -192,6 +196,7 @@ class AuthViewModel: NSObject, ObservableObject {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     self.firstName = data["firstName"] as? String ?? ""
                     self.lastName = data["lastName"] as? String ?? ""
+                    self.email = data["email"] as? String ?? ""
                     self.role = data["role"] as? String
                     self.isLoading = false
                 }
@@ -214,6 +219,13 @@ class AuthViewModel: NSObject, ObservableObject {
             "packagedLocation": packagedLocation,
             "datePackaged": Timestamp(date: Date())
         ]
+        
+        let masterData: [String: Any] = [
+            "ownerUserID": user.uid,
+            "itemName": itemName,
+            "packagedLocation": packagedLocation,
+            "datePackaged": Timestamp(date: Date())
+        ]
 
         db.collection("users")
             .document(user.uid)
@@ -222,7 +234,20 @@ class AuthViewModel: NSObject, ObservableObject {
             .setData(tagData) { error in
                 DispatchQueue.main.async {
                     if let error = error {
-                        self.errorMessage = "Failed to Save Meat Tag: \(error.localizedDescription)"
+                        self.errorMessage = "Failed to Save Meat Tag (User): \(error.localizedDescription)"
+                        completion(false)
+                        return
+                    }
+                    completion(true)
+                }
+            }
+        
+        db.collection("meatTags")
+            .document(tagID)
+            .setData(masterData) { error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        self.errorMessage = "Failed to Save Meat Tag (Master): \(error.localizedDescription)"
                         completion(false)
                         return
                     }
@@ -323,7 +348,7 @@ class AuthViewModel: NSObject, ObservableObject {
                 .setData(data, merge: true) { error in
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         if let error = error {
-                            self.errorMessage = "Failed to Update Meat Tag: \(error.localizedDescription)"
+                            self.errorMessage = "Failed to Update Meat Tag (User): \(error.localizedDescription)"
                             completion(false)
                             return
                         }
@@ -331,6 +356,124 @@ class AuthViewModel: NSObject, ObservableObject {
                         completion(true)
                     }
                 }
+            
+            db.collection("meatTags")
+                .document(tag.id)
+                .setData(data, merge: true) { error in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if let error = error {
+                            self.errorMessage = "Failed to Update Meat Tag (Master): \(error.localizedDescription)"
+                            completion(false)
+                            return
+                        }
+                        self.isLoading = false
+                        completion(true)
+                    }
+                }
+        }
+    }
+    
+    func checkIfTagExistsInMaster(tagID: String, completion: @escaping (Bool, String?) -> Void) {
+        let db = Firestore.firestore()
+        let docRef = db.collection("meatTags").document(tagID)
+        
+        docRef.getDocument { document, error in
+            if let document = document, document.exists {
+                let data = document.data()
+                let ownerID = data?["ownerUserID"] as? String ?? ""
+                completion(true, ownerID)
+            } else {
+                completion(false, nil)
+            }
+        }
+    }
+    
+    func transferMeatTag(tagID: String, completion: @escaping (Bool) -> Void) {
+        isTransfering = true
+        guard let newUserID = user?.uid else {
+            print("No authenticated user found.")
+            completion(false)
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let masterDocRef = db.collection("meatTags").document(tagID)
+        
+        masterDocRef.getDocument { document, error in
+            guard let document = document, document.exists else {
+                print("Master tag document not found.")
+                completion(false)
+                return
+            }
+            
+            let data = document.data() ?? [:]
+            
+            let oldOwnerID = data["ownerUserID"] as? String ?? ""
+            let itemName = data["itemName"] as? String ?? ""
+            let packagedLocation = data["packagedLocation"] as? String ?? ""
+            let timestamp = data["timestamp"] as? Timestamp ?? Timestamp(date: Date())
+            let notes = data["notes"] as? String ?? ""
+            let price = data["price"] as? Double
+            let unit = data["unit"] as? String
+            let expireDate = (data["expireDate"] as? Timestamp)?.dateValue()
+            let quantity = data["quantity"] as? Int
+            
+            let meatTag = MeatTag(id: tagID, itemName: itemName, packagedLocation: packagedLocation, datePackaged: timestamp.dateValue(), notes: notes, price: price, unit: unit, expireDate: expireDate, quantity: quantity)
+            
+            if !oldOwnerID.isEmpty && oldOwnerID != newUserID {
+                let oldUserTagRef = db
+                    .collection("users")
+                    .document(oldOwnerID)
+                    .collection("MeatTags")
+                    .document(tagID)
+                
+                oldUserTagRef.delete { error in
+                    if let error = error {
+                        print("Failed deleting tag from old user: \(error.localizedDescription)")
+                    } else {
+                        print("Deleted tag from old user account.")
+                    }
+                }
+            }
+            
+            do {
+                let meatTagData = try Firestore.Encoder().encode(meatTag)
+                
+                let newUserTagRef = db
+                    .collection("users")
+                    .document(newUserID)
+                    .collection("MeatTags")
+                    .document(tagID)
+                
+                newUserTagRef.setData(meatTagData) { error in
+                    if let error = error {
+                        print("Failed saving tag to new user collection: \(error.localizedDescription)")
+                        completion(false)
+                    } else {
+                        print("Tag successfully saved to new user collection.")
+                        
+                        DispatchQueue.main.async {
+                            self.MeatTags.append(meatTag)
+                        }
+                        
+                        masterDocRef.updateData([
+                            "ownerUserID": newUserID
+                        ]) { error in
+                            if let error = error {
+                                print("Failed updating master tag owner: \(error.localizedDescription)")
+                                completion(false)
+                            } else {
+                                print("Master tag owner updated successfully.")
+                                self.isTransfering = false
+                                completion(true)
+                            }
+                        }
+                    }
+                }
+            } catch {
+                print("Encoding error: \(error.localizedDescription)")
+                completion(false)
+            }
         }
     }
     
@@ -377,8 +520,8 @@ class AuthViewModel: NSObject, ObservableObject {
                     return
                 }
                 
-                self.isLoading = false
                 self.isAuthenticated = true
+                self.isLoading = false
             }
         }
     }
@@ -424,8 +567,8 @@ class AuthViewModel: NSObject, ObservableObject {
         controller.presentationContextProvider = self
         controller.performRequests()
     }
-
 }
+
 
 extension AuthViewModel: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
@@ -516,6 +659,7 @@ extension AuthViewModel {
 
                 self.user = authResult?.user
                 self.isAuthenticated = true
+                self.email = self.user?.email ?? ""
                 
                 self.fetchUserProfile(for: authResult?.user.uid ?? "")
             }

@@ -1,5 +1,5 @@
 //
-//  ButcherNFCView.swift
+//  WriterNFCView.swift
 //  TagYourMeat
 //
 //  Created by Jack Rogers on 6/6/25.
@@ -17,8 +17,8 @@ struct NFCNavigationItem: Hashable, Codable {
     let route: NFCFlowRoute
 }
 
-struct ButcherNFCView: View {
-    @Environment(\.dismiss) var dismissButcherNFCView
+struct WriterNFCView: View {
+    @Environment(\.dismiss) var dismissWriterNFCView
     @StateObject private var locationManager = LocationManager()
     @StateObject private var auth = AuthViewModel()
     
@@ -128,8 +128,8 @@ struct ButcherNFCView: View {
                             
                             if showPackagingLocation == 1 {
                                 if !packagedLocation.isEmpty {
-//                                    startNFCWrite()
-                                    path.append(NFCNavigationItem(route: .confirmation(itemName: itemName, packagedLocation: packagedLocation, tagID: generatedTagID)))
+                                    startNFCWrite()
+//                                    path.append(NFCNavigationItem(route: .confirmation(itemName: itemName, packagedLocation: packagedLocation, tagID: generatedTagID)))
                                     withAnimation {
                                         showStartWrite = 1
                                     }
@@ -157,7 +157,7 @@ struct ButcherNFCView: View {
                                     withAnimation {
                                         auth.addMeatTag(itemName: itemName, packagedLocation: packagedLocation, tagID: generatedTagID) { success in
                                             if success {
-                                                dismissButcherNFCView()
+                                                dismissWriterNFCView()
                                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                                     alertSuccessfullyAdded = true
                                                 }
@@ -185,7 +185,7 @@ struct ButcherNFCView: View {
                 .frame(width: 360)
                 .background(appGradients ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.gray.opacity(0.4)))
                 .cornerRadius(20)
-                .alert("NFC Write", isPresented: $showingNFCAlert) {
+                .alert("NFC Writer", isPresented: $showingNFCAlert) {
                     Button("OK", role: .cancel) {}
                 } message: {
                     Text(nfcStatus)
@@ -223,9 +223,9 @@ struct ButcherNFCView: View {
             .navigationDestination(for: NFCNavigationItem.self) { navItem in
                 switch navItem.route {
                 case .confirmation(let item, let location, let tagID):
-                    ButcherNFCConfirmation(itemName: item, packagedLocation: location, tagID: tagID) {
+                    WriterNFCConfirmation(itemName: item, packagedLocation: location, tagID: tagID) {
                         path.removeLast(path.count)
-                        dismissButcherNFCView()
+                        dismissWriterNFCView()
                     }
                 }
             }
@@ -263,7 +263,7 @@ struct ButcherNFCView: View {
     }
 }
 
-struct ButcherNFCConfirmation: View {
+struct WriterNFCConfirmation: View {
     let itemName: String
     let packagedLocation: String
     let tagID: String
@@ -303,11 +303,7 @@ struct ButcherNFCConfirmation: View {
                 HStack {
                     Button(action: {
                         withAnimation {
-                            auth.addMeatTag(
-                                itemName: itemName,
-                                packagedLocation: packagedLocation,
-                                tagID: tagID
-                            ) { success in
+                            auth.addMeatTag(itemName: itemName, packagedLocation: packagedLocation, tagID: tagID) { success in
                                 if success {
                                     goToRoot()
                                     print("Write Successful")
@@ -333,6 +329,7 @@ struct ButcherNFCConfirmation: View {
                 
                 Text(tagID)
                     .font(.caption)
+                    .monospaced(true)
                     .foregroundColor(.gray)
                     .padding(.top, 5)
             }
@@ -376,6 +373,6 @@ struct ButcherNFCConfirmation: View {
 }
 
 #Preview {
-    ButcherNFCView()
-//    ButcherNFCConfirmation(itemName: "Steak", packagedLocation: "Freezer C", tagID: "1234567890")
+    WriterNFCView()
+//    WriterNFCConfirmation(itemName: "Steak", packagedLocation: "Freezer C", tagID: "1234567890")
 }

@@ -2,12 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>CFBundleIconName</key>
 	<string>TagYourMeat</string>
-	<key>GIDClientID</key>
-	<string>633169080710-4vtko2iatenlhn8jenaosm9h7cjsgcib.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -17,11 +13,9 @@
 			</array>
 		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>633169080710-4vtko2iatenlhn8jenaosm9h7cjsgcib.apps.googleusercontent.com</string>
 	<key>GoogleService-Info</key>
 	<string>tagyourmeat</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TagYourMeat needs access to your location to provide a location for your NFC tags.</string>
-	<key>NFCReaderUsageDescription</key>
-	<string>We use NFC to scan and manage meat packaging inventory.</string>
 </dict>
 </plist>

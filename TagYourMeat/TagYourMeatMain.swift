@@ -157,8 +157,26 @@ struct TagYourMeatMain: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if auth.isAuthenticated && network.isConnected {
-                        NavigationLink(destination: ButcherNFCView()) {
-                            Image(systemName: "plus")
+                        Group {
+                            if auth.role == "User" {
+                                NavigationLink(destination: ReaderNFCView()) {
+                                    Image(systemName: "plus")
+                                }
+                            } else {
+                                NavigationLink(destination: WriterNFCView()) {
+                                    Image(systemName: "plus")
+                                }
+                            }
+                        }
+                        .contextMenu {
+                            NavigationLink(destination: ReaderNFCView()) {
+                                Text("NFC Reader")
+                                Image(systemName: "document.viewfinder")
+                            }
+                            NavigationLink(destination: WriterNFCView()) {
+                                Text("NFC Writer")
+                                Image(systemName: "pencil.and.scribble")
+                            }
                         }
                     } else if auth.isAuthenticated == false || network.isConnected == false {
                         Button { showCreateAccountTip = true } label: {
@@ -283,7 +301,6 @@ struct TagYourMeatMain: View {
                 lon = Double(valueString.trimmingCharacters(in: .whitespaces)) ?? 0.0
             }
         }
-        print("Lat: \(lat), Lon: \(lon)")
         
         return (lat, lon)
     }

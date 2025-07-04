@@ -10,14 +10,16 @@ import CoreNFC
 class NFCReader: NSObject {
     private var session: NFCNDEFReaderSession?
     private var onRead: ((String?, Error?) -> Void)?
+    private var didReadSuccessfully = false
 
     func beginReading(onRead: @escaping (String?, Error?) -> Void) {
         guard NFCNDEFReaderSession.readingAvailable else {
             onRead(nil, NSError(domain: "NFCReader", code: 0, userInfo: [NSLocalizedDescriptionKey: "NFC is not available on this device"]))
             return
         }
-        
+
         self.onRead = onRead
+        self.didReadSuccessfully = false
         session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
         session?.alertMessage = "Hold your iPhone near the NFC tag to read."
         session?.begin()
@@ -26,7 +28,13 @@ class NFCReader: NSObject {
 
 extension NFCReader: NFCNDEFReaderSessionDelegate {
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
-        onRead?(nil, error)
+        guard !didReadSuccessfully else {
+            return
+        }
+        
+        DispatchQueue.main.async {
+            self.onRead?(nil, error)
+        }
     }
 
     func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
@@ -34,9 +42,6 @@ extension NFCReader: NFCNDEFReaderSessionDelegate {
         
         for message in messages {
             for record in message.records {
-                print("TNF: \(record.typeNameFormat.rawValue), Type: \(String(describing: String(data: record.type, encoding: .utf8)))")
-                print("Payload: \(record.payload as NSData)")
-                
                 guard record.typeNameFormat == .nfcWellKnown,
                       let typeString = String(data: record.type, encoding: .utf8),
                       typeString == "T" else {
@@ -60,10 +65,11 @@ extension NFCReader: NFCNDEFReaderSessionDelegate {
                 result += text
             }
         }
-
+        
+        self.didReadSuccessfully = true
+        
         DispatchQueue.main.async {
             self.onRead?(result.isEmpty ? nil : result, nil)
-            self.session?.invalidate()
         }
     }
 }

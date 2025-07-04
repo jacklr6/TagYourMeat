@@ -15,6 +15,7 @@ struct TagYourMeatSettings: View {
     @AppStorage("savedLocation") private var savedLocation: String = ""
     @State private var showLocationAlert: Bool = false
     @AppStorage("appGradients") private var appGradients: Bool = true
+    @AppStorage("showMap") private var showMap: Bool = true
     
     var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -37,9 +38,14 @@ struct TagYourMeatSettings: View {
                         Image(systemName: "paintbrush.pointed")
                         Toggle("App Gradients", isOn: $appGradients)
                     }
+                    
+                    HStack {
+                        Image(systemName: "map")
+                        Toggle("Show Map (Beta)", isOn: $showMap)
+                    }
                 }
                 
-                if !isTestFlight {
+                if isTestFlight {
                     Section(header: Text("Developer"), footer: Text("Only available to beta testers in TestFlight.")) {
                         NavigationLink(destination: DeveloperView(), label: {
                             HStack {

@@ -17,6 +17,7 @@ struct TaggedMeatDetails: View {
     @State private var showPricePicker: Bool = false
     @AppStorage("alertSuccessfullyUpdated") private var alertSuccessfullyUpdated: Bool = false
     @AppStorage("alertSuccessfullyUpdatedSF") private var alertSuccessfullyUpdatedSF: Bool = false
+    @AppStorage("showMap") private var showMap: Bool = true
     
     @State private var cameraPosition = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 0, longitude: 0), span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)))
     
@@ -30,90 +31,121 @@ struct TaggedMeatDetails: View {
     }
     
     var body: some View {
-        ZStack {
-            Form {
-                Section(header: Text("Basic Info")) {
-                    TextField("Item Name", text: $tag.itemName)
-                    TextField("Location", text: $tag.packagedLocation)
-                    if let coordinate = coordinate {
-                        Map(position: $cameraPosition) { Marker("Packaged Location", coordinate: coordinate) }
-                        .frame(height: 150)
-                        .cornerRadius(10)
-                        .onAppear {
-                            cameraPosition = .region(
-                                MKCoordinateRegion(center: coordinate,
-                                                   span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2))
-                            )
+        NavigationStack {
+            VStack {
+                if showMap {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                    .fontWeight(.medium)
+                                    .font(.system(size: 21))
+                                Text("TagYourMeat")
+                            }
+                            Spacer()
                         }
-                        .disabled(true)
+                        .padding(.top)
+                        .padding(.horizontal, 7)
+                        .padding(.bottom, 1)
                     }
-                    DatePicker("Packaged Date", selection: .constant(tag.datePackaged), displayedComponents: .date)
-                        .disabled(true)
+                    
+                    HStack {
+                        Text("Edit Meat Tag")
+                            .font(.largeTitle.bold())
+                            .padding(.horizontal)
+                            .padding(.bottom, -1)
+                        Spacer()
+                    }
                 }
                 
-                Section(header: Text("Details")) {
-                    DatePicker("Expire Date", selection: Binding($tag.expireDate, replacingNilWith: tag.datePackaged + 182.5*24*60*60), displayedComponents: .date)
-                    HStack {
-                        Text("\(tag.price ?? 0.0, format: .currency(code: "USD"))")
-                            .contentTransition(.numericText())
-                        Spacer()
-                        Text("/\(tag.unit ?? "unit")")
-                            .contentTransition(.numericText())
+                List {
+                    Section(header: Text("Basic Info")) {
+                        TextField("Item Name", text: $tag.itemName)
+                        TextField("Location", text: $tag.packagedLocation)
+                        if showMap == true {
+                            if let coordinate = coordinate {
+                                Map(position: $cameraPosition) { Marker("Packaged Location", coordinate: coordinate) }
+                                    .frame(height: 150)
+                                    .cornerRadius(10)
+                                    .onAppear {
+                                        cameraPosition = .region(
+                                            MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2))
+                                        )
+                                    }
+                                    .disabled(true)
+                            }
+                        }
+                        DatePicker("Packaged Date", selection: .constant(tag.datePackaged), displayedComponents: .date)
+                            .disabled(true)
                     }
-                    .onTapGesture { showPricePicker = true }
-                    HStack {
+                    
+                    Section(header: Text("Details")) {
+                        DatePicker("Expire Date", selection: Binding($tag.expireDate, replacingNilWith: tag.datePackaged + 182.5*24*60*60), displayedComponents: .date)
                         HStack {
-                            Text("Quantity:")
-                            Text("\(tag.quantity ?? 1)")
+                            Text("\(tag.price ?? 0.0, format: .currency(code: "USD"))")
+                                .contentTransition(.numericText())
+                            Spacer()
+                            Text("/\(tag.unit ?? "unit")")
                                 .contentTransition(.numericText())
                         }
-                        Stepper("", value: Binding($tag.quantity, replacingNilWith: 1), in: 1...500)
+                        .onTapGesture { showPricePicker = true }
+                        HStack {
+                            HStack {
+                                Text("Quantity:")
+                                Text("\(tag.quantity ?? 1)")
+                                    .contentTransition(.numericText())
+                            }
+                            Stepper("", value: Binding($tag.quantity, replacingNilWith: 1), in: 1...500)
+                        }
+                        .animation(.default, value: tag.quantity)
+                        TextField("Notes", text: Binding($tag.notes, replacingNilWith: ""), axis: .vertical)
+                            .lineLimit(4, reservesSpace: true)
                     }
-                    .animation(.default, value: tag.quantity)
-                    TextField("Notes", text: Binding($tag.notes, replacingNilWith: ""), axis: .vertical)
-                        .lineLimit(4, reservesSpace: true)
-                }
-                .animation(.default, value: tag.price)
-                .animation(.default, value: tag.unit)
-                
-                Button(action: {
-                    auth.updateMeatTag(tag) { success in
-                        if success {
-                            dismiss()
-                            withAnimation {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    alertSuccessfullyUpdated = true
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                                    alertSuccessfullyUpdatedSF = true
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                                    alertSuccessfullyUpdated = false
-                                    alertSuccessfullyUpdatedSF = false
+                    .animation(.default, value: tag.price)
+                    .animation(.default, value: tag.unit)
+                    
+                    Button(action: {
+                        auth.updateMeatTag(tag) { success in
+                            if success {
+                                dismiss()
+                                withAnimation {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        alertSuccessfullyUpdated = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                                        alertSuccessfullyUpdatedSF = true
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                        alertSuccessfullyUpdated = false
+                                        alertSuccessfullyUpdatedSF = false
+                                    }
                                 }
                             }
                         }
-                    }
-                }) {
-                    HStack {
-                        Text("Save Changes")
-                        Spacer()
-                        if auth.isLoading {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "checkmark.circle")
+                    }) {
+                        HStack {
+                            Text("Save Changes")
+                            Spacer()
+                            if auth.isLoading {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "checkmark.circle")
+                            }
                         }
+                        .fontWeight(.semibold)
+                        .animation(.default, value: auth.isLoading)
                     }
-                    .fontWeight(.semibold)
-                    .animation(.default, value: auth.isLoading)
+                }
+                .sheet(isPresented: $showPricePicker) {
+                    PricePickerView(price: Binding($tag.price, replacingNilWith: 0.0), unit: Binding($tag.unit, replacingNilWith: "unit"))
+                        .presentationDetents([.height(500), .large])
                 }
             }
-            .navigationTitle("Edit Meat Tag")
-            .sheet(isPresented: $showPricePicker) {
-                PricePickerView(price: Binding($tag.price, replacingNilWith: 0.0), unit: Binding($tag.unit, replacingNilWith: "unit"))
-                    .presentationDetents([.height(500), .large])
-            }
+            .background(Color(.systemGroupedBackground))
+            .navigationBarHidden(true)
         }
     }
     
